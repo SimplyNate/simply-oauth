@@ -310,6 +310,7 @@ function safe_add(x, y) {
 function bit_rol(num, cnt) {
     return (num << cnt) | (num >>> (32 - cnt));
 }
-exports.HMACSHA1 = function (key, data) {
+
+module.exports.HMACSHA1 = function (key, data) {
     return b64_hmac_sha1(key, data);
 }
