@@ -1,0 +1,55 @@
+{
+    "env": {
+        "node": true,
+        "es6": true,
+        "jest": true
+    },
+    "parser": "babel-eslint",
+    "parserOptions": {
+        "ecmaVersion": 2020,
+        "sourceType": "script"
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+        "Atomics": "readonly"
+    },
+    "rules": {
+        "eqeqeq": "error",
+        "quotes": ["error", "single"],
+        "no-unused-expressions": "warn",
+        "no-dupe-args": "error",
+        "no-dupe-else-if": "error",
+        "no-dupe-keys": "error",
+        "no-irregular-whitespace": "error",
+        "no-unreachable": "error",
+        "no-unreachable-loop": "error",
+        "no-unsafe-finally": "error",
+        "use-isnan": "error",
+        "block-scoped-var": "error",
+        "consistent-return": "error",
+        "curly": ["error", "all"],
+        "dot-notation": "error",
+        "guard-for-in": "error",
+        "no-constructor-return": "error",
+        "no-else-return": "error",
+        "no-empty-function": "error",
+        "no-floating-decimal": "error",
+        "no-global-assign": "error",
+        "no-octal": "error",
+        "no-redeclare": "error",
+        "no-self-assign": "error",
+        "yoda": "error",
+        "arrow-parens": "error",
+        "arrow-spacing": "error",
+        "constructor-super": "error",
+        "no-const-assign": "error",
+        "no-duplicate-imports": "error",
+        "no-var": "error",
+        "object-shorthand": "error",
+        "prefer-arrow-callback": "error",
+        "prefer-const": "error",
+        "prefer-destructuring": "error",
+        "quote-props": ["error", "as-needed", { "keywords": false, "unnecessary": true, "numbers": true }]
+    },
+    "reportUnusedDisableDirectives": true
+}

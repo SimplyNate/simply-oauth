@@ -14,7 +14,19 @@ class OAuth {
         'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
         '4','5','6','7','8','9'];
 
-    constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback, signatureMethod, nonceSize, customHeaders) {
+    /**
+     * Create an OAuth 1.0/A object to perform requests
+     * @param {string} requestUrl
+     * @param {string} accessUrl
+     * @param {string} consumerKey
+     * @param {string} consumerSecret
+     * @param {string} version
+     * @param {string} authorize_callback
+     * @param {string} signatureMethod
+     * @param {number} nonceSize
+     * @param {object} customHeaders
+     */
+    constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback = 'oob', signatureMethod, nonceSize = 32, customHeaders) {
         this._isEcho = false;
         this._requestUrl = requestUrl;
         this._accessUrl = accessUrl;
@@ -23,25 +35,24 @@ class OAuth {
         if (signatureMethod !== 'PLAINTEXT' && signatureMethod !== 'HMAC-SHA1' && signatureMethod !== 'RSA-SHA1') {
             throw new Error(`Un-supported signature method: ${signatureMethod}`);
         }
+        if (signatureMethod === 'RSA-SHA1') {
+            this._privateKey = consumerSecret;
+        }
         this._version = version;
-        if (authorize_callback === undefined) {
-            this._authorize_callback = 'oob';
-        }
-        else {
-            this._authorize_callback = authorize_callback;
-        }
+        this._authorize_callback = authorize_callback;
         this._signatureMethod = signatureMethod;
-        this._nonceSize = nonceSize || 32;
+        this._nonceSize = nonceSize;
         this._headers = customHeaders || {
             'Accept' : '*/*',
             'Connection' : 'close',
             'User-Agent' : 'Node authentication'
         };
-        this._clientOptions = this._defaultClientOptions = {
+        this._defaultClientOptions = {
             'requestTokenHttpMethod': 'POST',
             'accessTokenHttpMethod': 'POST',
             'followRedirects': true
         };
+        this._clientOptions = this._defaultClientOptions;
         this._oauthParameterSeperator = ',';
     }
 
@@ -69,7 +80,7 @@ class OAuth {
 
     _getSignature(method, url, parameters, tokenSecret) {
         const signatureBase = this._createSignatureBase(method, url, parameters);
-        return this._createSignature( signatureBase, tokenSecret );
+        return this._createSignature(signatureBase, tokenSecret);
     }
 
     _normalizeUrl(url) {
@@ -78,14 +89,14 @@ class OAuth {
         if (parsedUrl.port) {
             if ((parsedUrl.protocol === 'http:' && parsedUrl.port !== '80' ) ||
                 (parsedUrl.protocol === 'https:' && parsedUrl.port !== '443')) {
-                port= ':' + parsedUrl.port;
+                port = `:${parsedUrl.port}`;
             }
         }
         if (!parsedUrl.pathname || parsedUrl.pathname === '') {
             parsedUrl.pathname = '/';
         }
 
-        return parsedUrl.protocol + '//' + parsedUrl.hostname + port + parsedUrl.pathname;
+        return `${parsedUrl.protocol}//${parsedUrl.hostname}${port}${parsedUrl.pathname}`;
     }
 
     // Is the parameter considered an OAuth parameter
@@ -101,9 +112,9 @@ class OAuth {
             authHeader += `realm="${this._realm}",`;
         }
         for (let i = 0; i < orderedParameters.length; i++) {
-            // Whilst the all the parameters should be included within the signature, only the oauth_ arguments
+            // While all the parameters should be included within the signature, only the oauth_ arguments
             // should appear within the authorization header.
-            if (this._isParameterNameAnOAuthParameter(orderedParameters[i][0]) ) {
+            if (this._isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
                 authHeader += `${this._encodeData(orderedParameters[i][0])}="${this._encodeData(orderedParameters[i][1])}"${this._oauthParameterSeperator}`;
             }
         }
@@ -114,7 +125,7 @@ class OAuth {
     // Takes an object literal that represents the arguments, and returns an array
     // of argument/value pairs.
     _makeArrayOfArgumentsHash(argumentsHash) {
-        const argument_pairs= [];
+        const argument_pairs = [];
         for (const key of argumentsHash) {
             if (argumentsHash.hasOwnProperty(key)) {
                 const value = argumentsHash[key];
@@ -134,7 +145,7 @@ class OAuth {
     // Sorts the encoded key value pairs by encoded name, then encoded value
     _sortRequestParams(argument_pairs) {
         // Sort by name, then value.
-        argument_pairs.sort(function(a,b) {
+        argument_pairs.sort(function (a, b) {
             if (a[0] === b[0])  {
                 return a[1] < b[1] ? -1 : 1;
             }
@@ -170,7 +181,7 @@ class OAuth {
     _createSignatureBase(method, url, parameters) {
         url = this._encodeData(this._normalizeUrl(url));
         parameters = this._encodeData(parameters);
-        return method.toUpperCase() + '&' + url + '&' + parameters;
+        return `${method.toUpperCase()}&${url}&${parameters}`;
     }
 
     _createSignature(signatureBase, tokenSecret) {
@@ -274,138 +285,135 @@ class OAuth {
         return orderedParameters;
     }
 
-    _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type, callback) {
-        const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
-        if (!post_content_type) {
-            post_content_type = 'application/x-www-form-urlencoded';
-        }
-        const parsedUrl = new URL(url);
-        if (parsedUrl.protocol === 'http:' && !parsedUrl.port) {
-            parsedUrl.port = '80';
-        }
-        if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
-            parsedUrl.port = '443';
-        }
-        const headers = {};
-        const authorization = this._buildAuthorizationHeaders(orderedParameters);
-        if (this._isEcho) {
-            headers['X-Verify-Credentials-Authorization'] = authorization;
-        }
-        else {
-            headers['Authorization'] = authorization;
-        }
-        headers['Host'] = parsedUrl.host
-        for (const key of this._headers ) {
-            if (this._headers.hasOwnProperty(key)) {
-                headers[key]= this._headers[key];
+    async _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
+        return new Promise((resolve, reject) => {
+            const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
+            if (!post_content_type) {
+                post_content_type = 'application/x-www-form-urlencoded';
             }
-        }
-        // Filter out any passed extra_params that are really to do with OAuth
-        for (const key of extra_params) {
-            if (this._isParameterNameAnOAuthParameter(key)) {
-                delete extra_params[key];
+            const parsedUrl = new URL(url);
+            if (parsedUrl.protocol === 'http:' && !parsedUrl.port) {
+                parsedUrl.port = '80';
             }
-        }
-        if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
-            // Fix the mismatch between the output of querystring.stringify() and this._encodeData()
-            post_body = querystring.stringify(extra_params)
-                .replace(/!/g, '%21')
-                .replace(/'/g, '%27')
-                .replace(/\(/g, '%28')
-                .replace(/\)/g, '%29')
-                .replace(/\*/g, '%2A');
-        }
-        if (post_body) {
-            if (Buffer.isBuffer(post_body)) {
-                headers['Content-length'] = post_body.length;
+            if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
+                parsedUrl.port = '443';
+            }
+            const headers = {};
+            const authorization = this._buildAuthorizationHeaders(orderedParameters);
+            if (this._isEcho) {
+                headers['X-Verify-Credentials-Authorization'] = authorization;
             }
             else {
-                headers['Content-length'] = Buffer.byteLength(post_body);
+                headers['Authorization'] = authorization;
             }
-        } else {
-            headers['Content-length'] = 0;
-        }
-        headers["Content-Type"] = post_content_type;
-        let path;
-        if (!parsedUrl.pathname || parsedUrl.pathname === '') {
-            parsedUrl.pathname = '/';
-        }
-        if (parsedUrl.query) {
-            path = `${parsedUrl.pathname}?${parsedUrl.query}`;
-        }
-        else {
-            path = parsedUrl.pathname;
-        }
-        let request;
-        if (parsedUrl.protocol === 'https:') {
-            request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers, true);
-        }
-        else {
-            request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers);
-        }
-        const clientOptions = this._clientOptions;
-        if (callback) {
-            let data = '';
-            const self = this;
-            // Some hosts *cough* google appear to close the connection early / send no content-length header
-            // allow this behaviour.
-            const allowEarlyClose = OAuthUtils.isAnEarlyCloseHost(parsedUrl.hostname);
-            let callbackCalled = false;
-            const passBackControl = function (response) {
-                if (!callbackCalled) {
-                    callbackCalled = true;
-                    if (response.statusCode >= 200 && response.statusCode <= 299) {
-                        callback(null, data, response);
-                    }
-                    else {
-                        // Follow 301 or 302 redirects with Location HTTP header
-                        if ((response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response.headers && response.headers.location) {
-                            self._performSecureRequest(oauth_token, oauth_token_secret, method, response.headers.location, extra_params, post_body, post_content_type, callback);
-                        }
-                        else {
-                            callback({ statusCode: response.statusCode, data: data }, data, response);
-                        }
-                    }
+            headers['Host'] = parsedUrl.host
+            for (const key of Object.keys(this._headers)) {
+                if (this._headers.hasOwnProperty(key)) {
+                    headers[key] = this._headers[key];
                 }
             }
-            request.on('response', function (response) {
+            // Filter out any passed extra_params that are really to do with OAuth
+            for (const key of Object.keys(extra_params)) {
+                if (this._isParameterNameAnOAuthParameter(key)) {
+                    delete extra_params[key];
+                }
+            }
+            if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
+                // Fix the mismatch between the output of querystring.stringify() and this._encodeData()
+                post_body = querystring.stringify(extra_params)
+                    .replace(/!/g, '%21')
+                    .replace(/'/g, '%27')
+                    .replace(/\(/g, '%28')
+                    .replace(/\)/g, '%29')
+                    .replace(/\*/g, '%2A');
+            }
+            if (post_body) {
+                if (Buffer.isBuffer(post_body)) {
+                    headers['Content-length'] = post_body.length;
+                }
+                else {
+                    headers['Content-length'] = Buffer.byteLength(post_body);
+                }
+            } else {
+                headers['Content-length'] = 0;
+            }
+            headers['Content-Type'] = post_content_type;
+            let path;
+            if (!parsedUrl.pathname || parsedUrl.pathname === '') {
+                parsedUrl.pathname = '/';
+            }
+            if (parsedUrl.query) {
+                path = `${parsedUrl.pathname}?${parsedUrl.query}`;
+            }
+            else {
+                path = parsedUrl.pathname;
+            }
+            let request;
+            if (parsedUrl.protocol === 'https:') {
+                request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers, true);
+            }
+            else {
+                request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers);
+            }
+            const clientOptions = this._clientOptions;
+            let data = '';
+            // Some hosts *cough* google appear to close the connection early / send no content-length header
+            // allow this behaviour.
+            const isEarlyClose = OAuthUtils.isAnEarlyCloseHost(parsedUrl.hostname);
+            const responseHandler = async (response) => {
+                if (this._responseIsOkay(response)) {
+                    return resolve({data, response});
+                }
+                else if (this._responseIsRedirect(response, clientOptions)) {
+                    try {
+                        const ret = await this._performSecureRequest(oauth_token, oauth_token_secret, method, response.headers.location, extra_params, post_body, post_content_type);
+                        return resolve(ret);
+                    }
+                    catch (e) {
+                        return reject(e);
+                    }
+                }
+                else {
+                    return reject({data, response});
+                }
+            }
+            request.on('response', (response) => {
                 response.setEncoding('utf8');
-                response.on('data', function (chunk) {
+                response.on('data', (chunk) => {
                     data += chunk;
                 });
-                response.on('end', function () {
-                    passBackControl(response);
+                response.on('end', async () => {
+                    await responseHandler(response);
                 });
-                response.on('close', function () {
-                    if (allowEarlyClose) {
-                        passBackControl(response);
+                response.on('close', async () => {
+                    if (isEarlyClose) {
+                        await responseHandler(response);
                     }
                 });
             });
-            request.on('error', function(err) {
-                if (!callbackCalled) {
-                    callbackCalled = true;
-                    callback(err);
-                }
+            request.on('error', (err) => {
+                return reject(err);
             });
             if ((method === 'POST' || method === 'PUT') && post_body !== null && post_body !== '') {
                 request.write(post_body);
             }
             request.end();
-        }
-        else {
-            if ((method === 'POST' || method === 'PUT') && post_body !== null && post_body !== '') {
-                request.write(post_body);
-            }
-            return request;
-        }
+        });
+    }
+
+    _responseIsOkay(response) {
+        return response.statusCode >= 200 && response.statusCode <= 299;
+    }
+
+    _responseIsRedirect(response, clientOptions) {
+        return (response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response.headers && response.headers.location;
     }
 
     setClientOptions(options) {
         let key;
         const mergedOptions = {}
         const hasOwnProperty = Object.prototype.hasOwnProperty;
-        for (key of this._defaultClientOptions) {
+        for (key of Object.keys(this._defaultClientOptions)) {
             if (!hasOwnProperty.call(options, key)) {
                 mergedOptions[key] = this._defaultClientOptions[key];
             } else {
@@ -415,50 +423,36 @@ class OAuth {
         this._clientOptions = mergedOptions;
     }
 
-    getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier, callback) {
+    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
         const extraParams = {};
-        if (typeof oauth_verifier === 'function') {
-            callback = oauth_verifier;
+        extraParams.oauth_verifier = oauth_verifier;
+        const { error, data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        if (error) {
+            return { error, data, response };
         }
-        else {
-            extraParams.oauth_verifier = oauth_verifier;
-        }
-        this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null, function(error, data, response) {
-            if (error) {
-                callback(error);
-            }
-            else {
-                const results = querystring.parse(data);
-                const oauth_access_token = results['oauth_token'];
-                delete results['oauth_token'];
-                const oauth_access_token_secret = results['oauth_token_secret'];
-                delete results['oauth_token_secret'];
-                callback(null, oauth_access_token, oauth_access_token_secret, results);
-            }
-        });
+        const results = querystring.parse(data);
+        const oauth_access_token = results['oauth_token'];
+        delete results['oauth_token'];
+        const oauth_access_token_secret = results['oauth_token_secret'];
+        delete results['oauth_token_secret'];
+        return { error, oauth_access_token, oauth_access_token_secret, results };
     }
 
     _getTimestamp() {
         return Math.floor((new Date()).getTime() / 1000);
     }
 
-    // Deprecated
-    getProtectedResource(url, method, oauth_token, oauth_token_secret, callback) {
-        this._performSecureRequest(oauth_token, oauth_token_secret, method, url, null, '', null, callback);
+    async delete(url, oauth_token, oauth_token_secret) {
+        return await this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
     }
 
-    delete(url, oauth_token, oauth_token_secret, callback) {
-        return this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null, callback);
+    async get(url, oauth_token, oauth_token_secret) {
+        return await this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
     }
 
-    get(url, oauth_token, oauth_token_secret, callback) {
-        return this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null, callback);
-    }
-
-    _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type, callback) {
+    async _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
         let extra_params = null;
         if (typeof post_content_type === 'function') {
-            callback = post_content_type;
             post_content_type = null;
         }
         if (typeof post_body !== 'string' && !Buffer.isBuffer(post_body)) {
@@ -466,15 +460,15 @@ class OAuth {
             extra_params = post_body;
             post_body = null;
         }
-        return this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type, callback);
+        return await this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
     }
 
-    put(url, oauth_token, oauth_token_secret, post_body, post_content_type, callback) {
-        return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type, callback);
+    async put(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
+        return await this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
-    post(url, oauth_token, oauth_token_secret, post_body, post_content_type, callback) {
-        return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type, callback);
+    async post(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
+        return await this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
     /**
