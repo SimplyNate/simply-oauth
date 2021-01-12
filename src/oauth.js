@@ -424,18 +424,21 @@ class OAuth {
     }
 
     async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-        const extraParams = {};
-        extraParams.oauth_verifier = oauth_verifier;
-        const { error, data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
-        if (error) {
-            return { error, data, response };
+        try {
+            const extraParams = {};
+            extraParams.oauth_verifier = oauth_verifier;
+            const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+            const results = querystring.parse(data);
+            const oauth_access_token = results['oauth_token'];
+            delete results['oauth_token'];
+            const oauth_access_token_secret = results['oauth_token_secret'];
+            delete results['oauth_token_secret'];
+            return { oauth_access_token, oauth_access_token_secret, results, response };
         }
-        const results = querystring.parse(data);
-        const oauth_access_token = results['oauth_token'];
-        delete results['oauth_token'];
-        const oauth_access_token_secret = results['oauth_token_secret'];
-        delete results['oauth_token_secret'];
-        return { error, oauth_access_token, oauth_access_token_secret, results };
+        catch (e) {
+            throw e;
+        }
+
     }
 
     _getTimestamp() {
@@ -443,11 +446,21 @@ class OAuth {
     }
 
     async delete(url, oauth_token, oauth_token_secret) {
-        return await this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
+        try {
+            return await this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     async get(url, oauth_token, oauth_token_secret) {
-        return await this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
+        try {
+            return await this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     async _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
@@ -460,15 +473,30 @@ class OAuth {
             extra_params = post_body;
             post_body = null;
         }
-        return await this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
+        try {
+            return await this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     async put(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        return await this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+        try {
+            return await this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     async post(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        return await this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+        try {
+            return await this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     /**
@@ -491,7 +519,7 @@ class OAuth {
      * need to provide a requestTokenHttpMethod option when creating the client.
      *
      **/
-    getOAuthRequestToken(extraParams, callback) {
+    async getOAuthRequestToken(extraParams, callback) {
         if (typeof extraParams === 'function'){
             callback = extraParams;
             extraParams = {};
@@ -500,19 +528,18 @@ class OAuth {
         if (this._authorize_callback) {
             extraParams['oauth_callback'] = this._authorize_callback;
         }
-        this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null, function(error, data, response) {
-            if (error) {
-                callback(error);
-            }
-            else {
-                const results = querystring.parse(data);
-                const oauth_token = results['oauth_token'];
-                const oauth_token_secret = results['oauth_token_secret'];
-                delete results['oauth_token'];
-                delete results['oauth_token_secret'];
-                callback(null, oauth_token, oauth_token_secret, results);
-            }
-        });
+        try {
+            const { data, response } = await this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
+            const results = querystring.parse(data);
+            const oauth_token = results['oauth_token'];
+            const oauth_token_secret = results['oauth_token_secret'];
+            delete results['oauth_token'];
+            delete results['oauth_token_secret'];
+            return { oauth_token, oauth_token_secret, results, response };
+        }
+        catch (e) {
+            throw e;
+        }
     }
 
     signUrl(url, oauth_token, oauth_token_secret, method) {
