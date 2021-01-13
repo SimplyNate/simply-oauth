@@ -8,11 +8,6 @@ const OAuthUtils = require('./_utils');
 
 
 class OAuth {
-    NONCE_CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n',
-        'o','p','q','r','s','t','u','v','w','x','y','z','A','B',
-        'C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-        'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
-        '4','5','6','7','8','9'];
 
     /**
      * Create an OAuth 1.0/A object to perform requests
@@ -27,6 +22,11 @@ class OAuth {
      * @param {object} customHeaders
      */
     constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback = 'oob', signatureMethod, nonceSize = 32, customHeaders) {
+        this.NONCE_CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n',
+            'o','p','q','r','s','t','u','v','w','x','y','z','A','B',
+            'C','D','E','F','G','H','I','J','K','L','M','N','O','P',
+            'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
+            '4','5','6','7','8','9'];
         this._isEcho = false;
         this._requestUrl = requestUrl;
         this._accessUrl = accessUrl;
@@ -43,14 +43,14 @@ class OAuth {
         this._signatureMethod = signatureMethod;
         this._nonceSize = nonceSize;
         this._headers = customHeaders || {
-            'Accept' : '*/*',
-            'Connection' : 'close',
+            Accept : '*/*',
+            Connection : 'close',
             'User-Agent' : 'Node authentication'
         };
         this._defaultClientOptions = {
-            'requestTokenHttpMethod': 'POST',
-            'accessTokenHttpMethod': 'POST',
-            'followRedirects': true
+            requestTokenHttpMethod: 'POST',
+            accessTokenHttpMethod: 'POST',
+            followRedirects: true
         };
         this._clientOptions = this._defaultClientOptions;
         this._oauthParameterSeperator = ',';
@@ -60,15 +60,14 @@ class OAuth {
         if (toEncode === null || toEncode === '') {
             return '';
         }
-        else {
-            const result = encodeURIComponent(toEncode);
-            // Fix the mismatch between OAuth's RFC3986's and Javascript's beliefs in what is right and wrong ;)
-            return result.replace(/!/g, '%21')
-                .replace(/'/g, '%27')
-                .replace(/\(/g, '%28')
-                .replace(/\)/g, '%29')
-                .replace(/\*/g, '%2A');
-        }
+        const result = encodeURIComponent(toEncode);
+        // Fix the mismatch between OAuth's RFC3986's and Javascript's beliefs in what is right and wrong ;)
+        return result.replace(/!/g, '%21')
+            .replace(/'/g, '%27')
+            .replace(/\(/g, '%28')
+            .replace(/\)/g, '%29')
+            .replace(/\*/g, '%2A');
+
     }
 
     _decodeData(toDecode) {
@@ -126,17 +125,15 @@ class OAuth {
     // of argument/value pairs.
     _makeArrayOfArgumentsHash(argumentsHash) {
         const argument_pairs = [];
-        for (const key of argumentsHash) {
-            if (argumentsHash.hasOwnProperty(key)) {
-                const value = argumentsHash[key];
-                if (Array.isArray(value)) {
-                    for (let i = 0; i < value.length; i++) {
-                        argument_pairs[argument_pairs.length] = [key, value[i]];
-                    }
+        for (const key of Object.keys(argumentsHash)) {
+            const value = argumentsHash[key];
+            if (Array.isArray(value)) {
+                for (let i = 0; i < value.length; i++) {
+                    argument_pairs[argument_pairs.length] = [key, value[i]];
                 }
-                else {
-                    argument_pairs[argument_pairs.length] = [key, value];
-                }
+            }
+            else {
+                argument_pairs[argument_pairs.length] = [key, value];
             }
         }
         return argument_pairs;
@@ -145,13 +142,11 @@ class OAuth {
     // Sorts the encoded key value pairs by encoded name, then encoded value
     _sortRequestParams(argument_pairs) {
         // Sort by name, then value.
-        argument_pairs.sort(function (a, b) {
+        argument_pairs.sort((a, b) => {
             if (a[0] === b[0])  {
                 return a[1] < b[1] ? -1 : 1;
             }
-            else {
-                return a[0] < b[0] ? -1 : 1;
-            }
+            return a[0] < b[0] ? -1 : 1;
         });
         return argument_pairs;
     }
@@ -185,12 +180,9 @@ class OAuth {
     }
 
     _createSignature(signatureBase, tokenSecret) {
-        if (tokenSecret === undefined) {
-            tokenSecret = '';
-        }
-        else tokenSecret = this._encodeData(tokenSecret);
+        tokenSecret = tokenSecret === undefined ? '' : this._encodeData(tokenSecret);
         // consumerSecret is already encoded
-        let key = this._consumerSecret + '&' + tokenSecret;
+        let key = `${this._consumerSecret}&${tokenSecret}`;
         let hash;
         if (this._signatureMethod === 'PLAINTEXT') {
             hash = key;
@@ -225,10 +217,10 @@ class OAuth {
     _createClient(port, hostname, method, path, headers, sslEnabled) {
         const options = {
             host: hostname,
-            port: port,
-            path: path,
-            method: method,
-            headers: headers
+            port,
+            path,
+            method,
+            headers
         };
         let httpModel;
         if (sslEnabled) {
@@ -242,14 +234,14 @@ class OAuth {
 
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
         const oauthParameters = {
-            'oauth_timestamp':        this._getTimestamp(),
-            'oauth_nonce':            this._getNonce(this._nonceSize),
-            'oauth_version':          this._version,
-            'oauth_signature_method': this._signatureMethod,
-            'oauth_consumer_key':     this._consumerKey
+            oauth_timestamp: this._getTimestamp(),
+            oauth_nonce: this._getNonce(this._nonceSize),
+            oauth_version: this._version,
+            oauth_signature_method: this._signatureMethod,
+            oauth_consumer_key: this._consumerKey
         };
         if (oauth_token) {
-            oauthParameters['oauth_token'] = oauth_token;
+            oauthParameters.oauth_token = oauth_token;
         }
         let sig;
         if (this._isEcho) {
@@ -257,20 +249,18 @@ class OAuth {
         }
         else {
             if (extra_params) {
-                for (const key of extra_params ) {
-                    if (extra_params.hasOwnProperty(key)) {
-                        oauthParameters[key] = extra_params[key];
-                    }
+                for (const key of Object.keys(extra_params)) {
+                    oauthParameters[key] = extra_params[key];
                 }
             }
             const parsedUrl = new URL(url);
             if (parsedUrl.query) {
                 let key2;
                 const extraParameters = querystring.parse(parsedUrl.query);
-                for (const key of extraParameters) {
+                for (const key of Object.keys(extraParameters)) {
                     const value = extraParameters[key];
                     if (typeof value === 'object'){
-                        for (key2 of value){
+                        for (key2 of Object.keys(value)){
                             oauthParameters[`${key}[${key2}]`] = value[key2];
                         }
                     } else {
@@ -285,7 +275,7 @@ class OAuth {
         return orderedParameters;
     }
 
-    async _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
+    _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
         return new Promise((resolve, reject) => {
             const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
             if (!post_content_type) {
@@ -304,13 +294,11 @@ class OAuth {
                 headers['X-Verify-Credentials-Authorization'] = authorization;
             }
             else {
-                headers['Authorization'] = authorization;
+                headers.Authorization = authorization;
             }
-            headers['Host'] = parsedUrl.host
+            headers.Host = parsedUrl.host
             for (const key of Object.keys(this._headers)) {
-                if (this._headers.hasOwnProperty(key)) {
-                    headers[key] = this._headers[key];
-                }
+                headers[key] = this._headers[key];
             }
             // Filter out any passed extra_params that are really to do with OAuth
             for (const key of Object.keys(extra_params)) {
@@ -412,7 +400,7 @@ class OAuth {
     setClientOptions(options) {
         let key;
         const mergedOptions = {}
-        const hasOwnProperty = Object.prototype.hasOwnProperty;
+        const { hasOwnProperty } = Object.prototype;
         for (key of Object.keys(this._defaultClientOptions)) {
             if (!hasOwnProperty.call(options, key)) {
                 mergedOptions[key] = this._defaultClientOptions[key];
@@ -429,41 +417,30 @@ class OAuth {
             extraParams.oauth_verifier = oauth_verifier;
             const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
             const results = querystring.parse(data);
-            const oauth_access_token = results['oauth_token'];
-            delete results['oauth_token'];
-            const oauth_access_token_secret = results['oauth_token_secret'];
-            delete results['oauth_token_secret'];
+            const oauth_access_token = results.oauth_token;
+            delete results.oauth_token;
+            const oauth_access_token_secret = results.oauth_token_secret;
+            delete results.oauth_token_secret;
             return { oauth_access_token, oauth_access_token_secret, results, response };
         }
         catch (e) {
             throw e;
         }
-
     }
 
     _getTimestamp() {
         return Math.floor((new Date()).getTime() / 1000);
     }
 
-    async delete(url, oauth_token, oauth_token_secret) {
-        try {
-            return await this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
-        }
-        catch (e) {
-            throw e;
-        }
+    delete(url, oauth_token, oauth_token_secret) {
+        return this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
     }
 
-    async get(url, oauth_token, oauth_token_secret) {
-        try {
-            return await this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
-        }
-        catch (e) {
-            throw e;
-        }
+    get(url, oauth_token, oauth_token_secret) {
+        return this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
     }
 
-    async _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
+    _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
         let extra_params = null;
         if (typeof post_content_type === 'function') {
             post_content_type = null;
@@ -473,30 +450,15 @@ class OAuth {
             extra_params = post_body;
             post_body = null;
         }
-        try {
-            return await this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
-        }
-        catch (e) {
-            throw e;
-        }
+        return this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
     }
 
     async put(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        try {
-            return await this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
-        }
-        catch (e) {
-            throw e;
-        }
+        return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
     async post(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        try {
-            return await this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
-        }
-        catch (e) {
-            throw e;
-        }
+        return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
     /**
@@ -519,22 +481,21 @@ class OAuth {
      * need to provide a requestTokenHttpMethod option when creating the client.
      *
      **/
-    async getOAuthRequestToken(extraParams, callback) {
+    async getOAuthRequestToken(extraParams) {
         if (typeof extraParams === 'function'){
-            callback = extraParams;
             extraParams = {};
         }
         // Callbacks are 1.0A related
         if (this._authorize_callback) {
-            extraParams['oauth_callback'] = this._authorize_callback;
+            extraParams.oauth_callback = this._authorize_callback;
         }
         try {
             const { data, response } = await this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
             const results = querystring.parse(data);
-            const oauth_token = results['oauth_token'];
-            const oauth_token_secret = results['oauth_token_secret'];
-            delete results['oauth_token'];
-            delete results['oauth_token_secret'];
+            const {oauth_token} = results;
+            const {oauth_token_secret} = results;
+            delete results.oauth_token;
+            delete results.oauth_token_secret;
             return { oauth_token, oauth_token_secret, results, response };
         }
         catch (e) {
