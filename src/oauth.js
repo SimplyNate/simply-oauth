@@ -336,13 +336,8 @@ class OAuth {
             else {
                 path = parsedUrl.pathname;
             }
-            let request;
-            if (parsedUrl.protocol === 'https:') {
-                request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers, true);
-            }
-            else {
-                request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers);
-            }
+            const isHttps = parsedUrl.protocol === 'https:';
+            const request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers, isHttps);
             const clientOptions = this._clientOptions;
             let data = '';
             // Some hosts *cough* google appear to close the connection early / send no content-length header
