@@ -52,7 +52,7 @@ class OAuth2 {
     /**
      * Sets the authorization method for Authorization header.
      * e.g. Authorization: Bearer <token>  # "Bearer" is the authorization method.
-     * @param {*} authMethod
+     * @param {string} authMethod
      */
     setAuthMethod(authMethod) {
         this._authMethod = authMethod;
@@ -227,7 +227,7 @@ class OAuth2 {
 
     /**
      * Gets an OAuth Access token
-     * @param {*} code
+     * @param {string} code
      * @param {object} params
      * @returns {Promise<{access_token: ParsedUrlQuery, refresh_token: ParsedUrlQuery, response: Object, results: ParsedUrlQuery}>}
      */
@@ -270,8 +270,8 @@ class OAuth2 {
 
     /**
      * Gets a protected resource. Deprecated
-     * @param url
-     * @param access_token
+     * @param {string} url
+     * @param {string} access_token
      * @returns {Promise<{data: string, response: Object}>}
      * @deprecated
      */
@@ -282,7 +282,7 @@ class OAuth2 {
     /**
      * Send a GET OAuth request
      * @param {string} url
-     * @param {*} access_token
+     * @param {(string|null)} access_token
      * @returns {Promise<{data: string, response: Object}>}
      */
     get(url, access_token) {
