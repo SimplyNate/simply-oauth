@@ -356,9 +356,7 @@ class OAuth {
                         return reject(e);
                     }
                 }
-                else {
-                    return reject({data, response});
-                }
+                return reject({data, response});
             }
             request.on('response', (response) => {
                 response.setEncoding('utf8');

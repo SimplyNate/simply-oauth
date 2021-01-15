@@ -6,7 +6,7 @@ const OAuthUtils = require('./_utils');
 class OAuth2 {
 
     /**
-     *
+     * Create an OAuth2 object
      * @param {string} clientId
      * @param {string} clientSecret
      * @param {string} baseSite
@@ -14,57 +14,83 @@ class OAuth2 {
      * @param {string} accessTokenPath
      * @param {object} customHeaders
      */
-    constructor(clientId, clientSecret, baseSite, authorizePath, accessTokenPath, customHeaders) {
+    constructor(clientId, clientSecret, baseSite, authorizePath='/oauth/authorize', accessTokenPath='/oauth/access_token', customHeaders={}) {
         this._clientId = clientId;
         this._clientSecret = clientSecret;
         this._baseSite = baseSite;
-        this._authorizeUrl = authorizePath || '/oauth/authorize';
-        this._accessTokenUrl = accessTokenPath || '/oauth/access_token';
+        this._authorizeUrl = authorizePath;
+        this._accessTokenUrl = accessTokenPath;
         this._accessTokenName = 'access_token';
         this._authMethod = 'Bearer';
-        this._customHeaders = customHeaders || {};
+        this._customHeaders = customHeaders;
         this._useAuthorizationHeaderForGET = false;
         //our agent
         this._agent = undefined;
     }
 
-    // Allows you to set an agent to use instead of the default HTTP or
-    // HTTPS agents. Useful when dealing with your own certificates.
+    /**
+     * Allows you to set an agent to use instead of the default HTTP or HTTPS agents.
+     * Useful when dealing with your own certificates.
+     * @param {*} agent
+     */
     setAgent(agent) {
         this._agent = agent;
     }
 
-    // This 'hack' method is required for sites that don't use
-    // 'access_token' as the name of the access token (for requests).
-    // ( http://tools.ietf.org/html/draft-ietf-oauth-v2-16#section-7 )
-    // it isn't clear what the correct value should be atm, so allowing
-    // for specific (temporary?) override for now.
+    /**
+     * This 'hack' method is required for sites that don't use
+     * 'access_token' as the name of the access token (for requests).
+     * (http://tools.ietf.org/html/draft-ietf-oauth-v2-16#section-7)
+     * it isn't clear what the correct value should be atm, so allowing
+     * for specific (temporary?) override for now.
+     * @param {string} name
+     */
     setAccessTokenName(name) {
         this._accessTokenName = name;
     }
 
-    // Sets the authorization method for Authorization header.
-    // e.g. Authorization: Bearer <token>  # "Bearer" is the authorization method.
+    /**
+     * Sets the authorization method for Authorization header.
+     * e.g. Authorization: Bearer <token>  # "Bearer" is the authorization method.
+     * @param {*} authMethod
+     */
     setAuthMethod(authMethod) {
         this._authMethod = authMethod;
     }
 
-    // If you use the OAuth2 exposed 'get' method (and don't construct your own _request call )
-    // this will specify whether to use an 'Authorize' header instead of passing the access_token as a query parameter
+    /**
+     * If you use the OAuth2 exposed 'get' method (and don't construct your own _request call)
+     * this will specify whether to use an 'Authorize' header instead of passing the access_token as a query parameter
+     * @param {*} useIt
+     */
     setUseAuthorizationHeaderForGET(useIt) {
         this._useAuthorizationHeaderForGET = useIt;
     }
 
+    /**
+     * Returns an Access Token URL string
+     * @returns {string}
+     * @private
+     */
     _getAccessTokenUrl() {
         return `${this._baseSite}${this._accessTokenUrl}`; /* + "?" + querystring.stringify(params); */
     }
 
-    // Build the authorization header. In particular, build the part after the colon.
-    // e.g. Authorization: Bearer <token>  # Build "Bearer <token>"
+    /**
+     * Build the authorization header. In particular, build the part after the colon.
+     * e.g. Authorization: Bearer <token>  # Build "Bearer <token>"
+     * @param {string} token
+     */
     buildAuthHeader(token) {
         return `${this._authMethod} ${token}`;
     }
 
+    /**
+     * Returns the correct http/s library for the protocol
+     * @param {URL} parsedUrl
+     * @returns {module:https}
+     * @private
+     */
     _chooseHttpLibrary(parsedUrl) {
         let http_library = https;
         // As this is OAUth2, we *assume* https unless told explicitly otherwise.
@@ -74,6 +100,16 @@ class OAuth2 {
         return http_library;
     }
 
+    /**
+     * Prepare an OAuth request
+     * @param {string} method
+     * @param {string} url
+     * @param {object} headers
+     * @param {*} post_body
+     * @param {string} access_token
+     * @returns {Promise<{data: string, response: Object}>}
+     * @private
+     */
     _request(method, url, headers, post_body, access_token) {
         const parsedUrl = new URL(url);
         if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
@@ -81,11 +117,11 @@ class OAuth2 {
         }
         const http_library = this._chooseHttpLibrary(parsedUrl);
         const realHeaders = {};
-        for (const key of this._customHeaders) {
+        for (const key of Object.keys(this._customHeaders)) {
             realHeaders[key] = this._customHeaders[key];
         }
         if (headers) {
-            for (const key of headers) {
+            for (const key of Object.keys(headers)) {
                 realHeaders[key] = headers[key];
             }
         }
@@ -126,7 +162,7 @@ class OAuth2 {
 
     /**
      *
-     * @param {(http|https)} http_library
+     * @param {(module:http|module:https)} http_library
      * @param {object} options
      * @param {*} post_body
      * @returns {Promise<{data: string, response: object}>}
@@ -178,12 +214,23 @@ class OAuth2 {
         });
     }
 
+    /**
+     * Returns a string authorize URL
+     * @param {object} params
+     * @returns {string}
+     */
     getAuthorizeUrl(params) {
         params = params || {};
         params.client_id = this._clientId;
-        return `${this._baseSite + this._authorizeUrl}?${querystring.stringify(params)}`;
+        return `${this._baseSite}${this._authorizeUrl}?${querystring.stringify(params)}`;
     }
 
+    /**
+     * Gets an OAuth Access token
+     * @param {*} code
+     * @param {object} params
+     * @returns {Promise<{access_token: ParsedUrlQuery, refresh_token: ParsedUrlQuery, response: Object, results: ParsedUrlQuery}>}
+     */
     async getOAuthAccessToken(code, params) {
         params = params || {};
         params.client_id = this._clientId;
@@ -221,11 +268,23 @@ class OAuth2 {
 
     }
 
-    // Deprecated
+    /**
+     * Gets a protected resource. Deprecated
+     * @param url
+     * @param access_token
+     * @returns {Promise<{data: string, response: Object}>}
+     * @deprecated
+     */
     async getProtectedResource(url, access_token) {
         return this._request('GET', url, {}, '', access_token);
     }
 
+    /**
+     * Send a GET OAuth request
+     * @param {string} url
+     * @param {*} access_token
+     * @returns {Promise<{data: string, response: Object}>}
+     */
     get(url, access_token) {
         const headers = {}
         if (this._useAuthorizationHeaderForGET) {
