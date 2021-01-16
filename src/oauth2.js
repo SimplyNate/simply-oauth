@@ -31,7 +31,7 @@ class OAuth2 {
     /**
      * Allows you to set an agent to use instead of the default HTTP or HTTPS agents.
      * Useful when dealing with your own certificates.
-     * @param {*} agent
+     * @param {string} agent
      */
     setAgent(agent) {
         this._agent = agent;
@@ -61,7 +61,7 @@ class OAuth2 {
     /**
      * If you use the OAuth2 exposed 'get' method (and don't construct your own _request call)
      * this will specify whether to use an 'Authorize' header instead of passing the access_token as a query parameter
-     * @param {*} useIt
+     * @param {boolean} useIt
      */
     setUseAuthorizationHeaderForGET(useIt) {
         this._useAuthorizationHeaderForGET = useIt;
@@ -153,7 +153,7 @@ class OAuth2 {
         const options = {
             host: parsedUrl.hostname,
             port: parsedUrl.port,
-            path: parsedUrl.pathname + queryStr,
+            path: `${parsedUrl.pathname}${queryStr}`,
             method,
             headers: realHeaders
         };
