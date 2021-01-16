@@ -106,11 +106,11 @@ class OAuth2 {
      * @param {string} url
      * @param {object} headers
      * @param {*} post_body
-     * @param {string} access_token
+     * @param {string|null} access_token
      * @returns {Promise<{data: string, response: Object}>}
      * @private
      */
-    _request(method, url, headers, post_body, access_token) {
+    _request(method, url, headers, post_body=null, access_token=null) {
         const parsedUrl = new URL(url);
         if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
             parsedUrl.port = '443';
@@ -243,7 +243,7 @@ class OAuth2 {
         };
         // eslint-disable-next-line no-useless-catch
         try {
-            const { data, response } = await this._request('POST', this._getAccessTokenUrl(), post_headers, post_data, null);
+            const { data, response } = await this._request('POST', this._getAccessTokenUrl(), post_headers, post_data);
             let results;
             try {
                 // As of http://tools.ietf.org/html/draft-ietf-oauth-v2-07
