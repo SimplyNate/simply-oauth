@@ -88,7 +88,7 @@ class OAuth2 {
     /**
      * Returns the correct http/s library for the protocol
      * @param {URL} parsedUrl
-     * @returns {module:https}
+     * @returns {(https|http)}
      * @private
      */
     _chooseHttpLibrary(parsedUrl) {
@@ -162,7 +162,7 @@ class OAuth2 {
 
     /**
      *
-     * @param {(module:http|module:https)} http_library
+     * @param {(http|https)} http_library
      * @param {object} options
      * @param {*} post_body
      * @returns {Promise<{data: string, response: object}>}
@@ -180,9 +180,9 @@ class OAuth2 {
              */
             const responseHandler = (response, data) => {
                 if (!(response.statusCode >= 200 && response.statusCode <= 299) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
-                    return reject({ statusCode: response.statusCode, data, response });
+                    return reject({statusCode: response.statusCode, data, response});
                 } 
-                return resolve({ data, response });
+                return resolve({data, response});
                 
             }
             let data = '';
@@ -190,12 +190,11 @@ class OAuth2 {
             if (this._agent) {
                 options.agent = this._agent;
             }
-            const request = http_library.request(options);
-            request.on('response', (response) => {
+            const request = http_library.request(options, (response) => {
                 response.on('data', (chunk) => {
                     data += chunk;
                 });
-                response.addListener('end', () => {
+                response.on('end', () => {
                     responseHandler(response, data);
                 });
                 response.on('close', () => {
