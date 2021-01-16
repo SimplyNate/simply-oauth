@@ -275,7 +275,7 @@ class OAuth2 {
      * @returns {Promise<{data: string, response: Object}>}
      * @deprecated
      */
-    async getProtectedResource(url, access_token) {
+    getProtectedResource(url, access_token) {
         return this._request('GET', url, {}, '', access_token);
     }
 
