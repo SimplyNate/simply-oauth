@@ -74,7 +74,7 @@ class OAuth {
     }
 
     _createSignature(signatureBase, tokenSecret) {
-        tokenSecret = tokenSecret === undefined ? '' : OAuthUtils.encodeData(tokenSecret);
+        tokenSecret = tokenSecret ? OAuthUtils.encodeData(tokenSecret) : '';
         // consumerSecret is already encoded
         let key = `${this._consumerSecret}&${tokenSecret}`;
         let hash;
@@ -226,10 +226,10 @@ class OAuth {
             // allow this behaviour.
             const isEarlyClose = OAuthUtils.isAnEarlyCloseHost(parsedUrl.hostname);
             const responseHandler = async (response) => {
-                if (this._responseIsOkay(response)) {
+                if (OAuthUtils.responseIsOkay(response)) {
                     return resolve({data, response});
                 }
-                else if (this._responseIsRedirect(response, clientOptions)) {
+                else if (OAuthUtils.responseIsRedirect(response, clientOptions)) {
                     try {
                         const ret = await this._performSecureRequest(oauth_token, oauth_token_secret, method, response.headers.location, extra_params, post_body, post_content_type);
                         return resolve(ret);
