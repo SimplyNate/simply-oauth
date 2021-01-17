@@ -117,13 +117,9 @@ class OAuth2 {
         }
         const http_library = this._chooseHttpLibrary(parsedUrl);
         const realHeaders = {};
-        for (const key of Object.keys(this._customHeaders)) {
-            realHeaders[key] = this._customHeaders[key];
-        }
+        OAuthUtils.combineObjects(this._customHeaders, realHeaders);
         if (headers) {
-            for (const key of Object.keys(headers)) {
-                realHeaders[key] = headers[key];
-            }
+            OAuthUtils.combineObjects(headers, realHeaders);
         }
         realHeaders.Host = parsedUrl.host;
         if (!realHeaders['User-Agent']) {
