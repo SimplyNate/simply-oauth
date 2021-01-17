@@ -17,21 +17,16 @@ class OAuth {
      * @param {string} consumerSecret
      * @param {string} version
      * @param {string} authorize_callback
-     * @param {string} signatureMethod
+     * @param {string|null} signatureMethod
      * @param {number} nonceSize
-     * @param {object} customHeaders
+     * @param {object|null} customHeaders
      */
-    constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback = 'oob', signatureMethod, nonceSize = 32, customHeaders) {
-        this.NONCE_CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n',
-            'o','p','q','r','s','t','u','v','w','x','y','z','A','B',
-            'C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-            'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
-            '4','5','6','7','8','9'];
+    constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback = 'oob', signatureMethod=null, nonceSize = 32, customHeaders=null) {
         this._isEcho = false;
         this._requestUrl = requestUrl;
         this._accessUrl = accessUrl;
         this._consumerKey = consumerKey;
-        this._consumerSecret = this._encodeData(consumerSecret);
+        this._consumerSecret = OAuthUtils.encodeData(consumerSecret);
         if (signatureMethod !== 'PLAINTEXT' && signatureMethod !== 'HMAC-SHA1' && signatureMethod !== 'RSA-SHA1') {
             throw new Error(`Un-supported signature method: ${signatureMethod}`);
         }
@@ -56,52 +51,9 @@ class OAuth {
         this._oauthParameterSeperator = ',';
     }
 
-    _encodeData(toEncode) {
-        if (toEncode === null || toEncode === '') {
-            return '';
-        }
-        const result = encodeURIComponent(toEncode);
-        // Fix the mismatch between OAuth's RFC3986's and Javascript's beliefs in what is right and wrong ;)
-        return result.replace(/!/g, '%21')
-            .replace(/'/g, '%27')
-            .replace(/\(/g, '%28')
-            .replace(/\)/g, '%29')
-            .replace(/\*/g, '%2A');
-
-    }
-
-    _decodeData(toDecode) {
-        if (toDecode !== null) {
-            toDecode = toDecode.replace(/\+/g, ' ');
-        }
-        return decodeURIComponent(toDecode);
-    }
-
     _getSignature(method, url, parameters, tokenSecret) {
-        const signatureBase = this._createSignatureBase(method, url, parameters);
+        const signatureBase = OAuthUtils.createSignatureBase(method, url, parameters);
         return this._createSignature(signatureBase, tokenSecret);
-    }
-
-    _normalizeUrl(url) {
-        const parsedUrl = new URL(url);
-        let port = '';
-        if (parsedUrl.port) {
-            if ((parsedUrl.protocol === 'http:' && parsedUrl.port !== '80' ) ||
-                (parsedUrl.protocol === 'https:' && parsedUrl.port !== '443')) {
-                port = `:${parsedUrl.port}`;
-            }
-        }
-        if (!parsedUrl.pathname || parsedUrl.pathname === '') {
-            parsedUrl.pathname = '/';
-        }
-
-        return `${parsedUrl.protocol}//${parsedUrl.hostname}${port}${parsedUrl.pathname}`;
-    }
-
-    // Is the parameter considered an OAuth parameter
-    _isParameterNameAnOAuthParameter(parameter) {
-        const m = parameter.match('^oauth_');
-        return !!(m && (m[0] === 'oauth_'));
     }
 
     // build the OAuth request authorization header
@@ -113,74 +65,16 @@ class OAuth {
         for (let i = 0; i < orderedParameters.length; i++) {
             // While all the parameters should be included within the signature, only the oauth_ arguments
             // should appear within the authorization header.
-            if (this._isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
-                authHeader += `${this._encodeData(orderedParameters[i][0])}="${this._encodeData(orderedParameters[i][1])}"${this._oauthParameterSeperator}`;
+            if (OAuthUtils.isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
+                authHeader += `${OAuthUtils.encodeData(orderedParameters[i][0])}="${OAuthUtils.encodeData(orderedParameters[i][1])}"${this._oauthParameterSeperator}`;
             }
         }
         authHeader = authHeader.substring(0, authHeader.length - this._oauthParameterSeperator.length);
         return authHeader;
     }
 
-    // Takes an object literal that represents the arguments, and returns an array
-    // of argument/value pairs.
-    _makeArrayOfArgumentsHash(argumentsHash) {
-        const argument_pairs = [];
-        for (const key of Object.keys(argumentsHash)) {
-            const value = argumentsHash[key];
-            if (Array.isArray(value)) {
-                for (let i = 0; i < value.length; i++) {
-                    argument_pairs[argument_pairs.length] = [key, value[i]];
-                }
-            }
-            else {
-                argument_pairs[argument_pairs.length] = [key, value];
-            }
-        }
-        return argument_pairs;
-    }
-
-    // Sorts the encoded key value pairs by encoded name, then encoded value
-    _sortRequestParams(argument_pairs) {
-        // Sort by name, then value.
-        argument_pairs.sort((a, b) => {
-            if (a[0] === b[0])  {
-                return a[1] < b[1] ? -1 : 1;
-            }
-            return a[0] < b[0] ? -1 : 1;
-        });
-        return argument_pairs;
-    }
-
-    _normaliseRequestParams(args) {
-        let argument_pairs = this._makeArrayOfArgumentsHash(args);
-        // First encode them #3.4.1.3.2 .1
-        for (let i = 0; i < argument_pairs.length; i++) {
-            argument_pairs[i][0] = this._encodeData(argument_pairs[i][0]);
-            argument_pairs[i][1] = this._encodeData(argument_pairs[i][1]);
-        }
-        // Then sort them #3.4.1.3.2 .2
-        argument_pairs = this._sortRequestParams(argument_pairs);
-        // Then concatenate together #3.4.1.3.2 .3 & .4
-        let newArgs = '';
-        for (let i = 0; i < argument_pairs.length; i++) {
-            newArgs += argument_pairs[i][0];
-            newArgs += '='
-            newArgs += argument_pairs[i][1];
-            if (i < argument_pairs.length-1) {
-                newArgs += '&';
-            }
-        }
-        return newArgs;
-    }
-
-    _createSignatureBase(method, url, parameters) {
-        url = this._encodeData(this._normalizeUrl(url));
-        parameters = this._encodeData(parameters);
-        return `${method.toUpperCase()}&${url}&${parameters}`;
-    }
-
     _createSignature(signatureBase, tokenSecret) {
-        tokenSecret = tokenSecret === undefined ? '' : this._encodeData(tokenSecret);
+        tokenSecret = tokenSecret === undefined ? '' : OAuthUtils.encodeData(tokenSecret);
         // consumerSecret is already encoded
         let key = `${this._consumerSecret}&${tokenSecret}`;
         let hash;
@@ -200,18 +94,6 @@ class OAuth {
             }
         }
         return hash;
-    }
-
-    _getNonce(nonceSize) {
-        const result = [];
-        const chars = this.NONCE_CHARS;
-        let char_pos;
-        const nonce_chars_length = chars.length;
-        for (let i = 0; i < nonceSize; i++) {
-            char_pos = Math.floor(Math.random() * nonce_chars_length);
-            result[i] = chars[char_pos];
-        }
-        return result.join('');
     }
 
     _createClient(port, hostname, method, path, headers, sslEnabled) {
@@ -234,8 +116,8 @@ class OAuth {
 
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
         const oauthParameters = {
-            oauth_timestamp: this._getTimestamp(),
-            oauth_nonce: this._getNonce(this._nonceSize),
+            oauth_timestamp: OAuthUtils.getTimestamp(),
+            oauth_nonce: OAuthUtils.getNonce(this._nonceSize),
             oauth_version: this._version,
             oauth_signature_method: this._signatureMethod,
             oauth_consumer_key: this._consumerKey
@@ -245,7 +127,7 @@ class OAuth {
         }
         let sig;
         if (this._isEcho) {
-            sig = this._getSignature('GET', this._verifyCredentials, this._normaliseRequestParams(oauthParameters), oauth_token_secret);
+            sig = this._getSignature('GET', this._verifyCredentials,OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
         }
         else {
             if (extra_params) {
@@ -268,9 +150,9 @@ class OAuth {
                     }
                 }
             }
-            sig = this._getSignature(method, url, this._normaliseRequestParams(oauthParameters), oauth_token_secret);
+            sig = this._getSignature(method, url, OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
         }
-        const orderedParameters = this._sortRequestParams(this._makeArrayOfArgumentsHash(oauthParameters));
+        const orderedParameters = OAuthUtils.sortRequestParams(OAuthUtils.makeArrayOfArgumentsHash(oauthParameters));
         orderedParameters[orderedParameters.length]= ['oauth_signature', sig];
         return orderedParameters;
     }
@@ -302,12 +184,12 @@ class OAuth {
             }
             // Filter out any passed extra_params that are really to do with OAuth
             for (const key of Object.keys(extra_params)) {
-                if (this._isParameterNameAnOAuthParameter(key)) {
+                if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
                     delete extra_params[key];
                 }
             }
             if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
-                // Fix the mismatch between the output of querystring.stringify() and this._encodeData()
+                // Fix the mismatch between the output of querystring.stringify() and OAuthUtils.encodeData()
                 post_body = querystring.stringify(extra_params)
                     .replace(/!/g, '%21')
                     .replace(/'/g, '%27')
@@ -382,14 +264,6 @@ class OAuth {
         });
     }
 
-    _responseIsOkay(response) {
-        return response.statusCode >= 200 && response.statusCode <= 299;
-    }
-
-    _responseIsRedirect(response, clientOptions) {
-        return (response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response.headers && response.headers.location;
-    }
-
     setClientOptions(options) {
         let key;
         const mergedOptions = {}
@@ -419,10 +293,6 @@ class OAuth {
         catch (e) {
             throw e;
         }
-    }
-
-    _getTimestamp() {
-        return Math.floor((new Date()).getTime() / 1000);
     }
 
     delete(url, oauth_token, oauth_token_secret) {
@@ -504,7 +374,7 @@ class OAuth {
         const parsedUrl = URL.parse(url, false);
         let query = '';
         for (let i = 0; i < orderedParameters.length; i++) {
-            query += `${orderedParameters[i][0]}=${this._encodeData(orderedParameters[i][1])}&`;
+            query += `${orderedParameters[i][0]}=${OAuthUtils.encodeData(orderedParameters[i][1])}&`;
         }
         query = query.substring(0, query.length-1);
         return `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}?${query}`;
