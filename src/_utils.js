@@ -1,3 +1,6 @@
+const http = require('http');
+const https = require('https');
+
 /**
  * Returns true if this is a host that closes *before* it ends
  * @param {string} hostName
@@ -159,4 +162,62 @@ module.exports.responseIsRedirect = function (response, clientOptions) {
 
 module.exports.getTimestamp = function () {
     return Math.floor((new Date()).getTime() / 1000);
+}
+
+/**
+ * Returns the correct http/s library for the protocol
+ * @param {URL} parsedUrl
+ * @returns {(https|http)}
+ */
+module.exports.chooseHttpLibrary = function (parsedUrl) {
+    return parsedUrl.protocol === 'https:' ? https : http;
+}
+
+/**
+ *
+ * @param {(http|https)} http_library
+ * @param {object} options
+ * @param {*} post_body
+ * @returns {Promise<{data: string, response: object}>}
+ * @private
+ */
+module.exports.executeRequest = function (http_library, options, post_body) {
+    return new Promise((resolve, reject) => {
+        // Some hosts *cough* google appear to close the connection early / send no content-length header
+        // allow this behaviour.
+        const isEarlyClose = this.isAnEarlyCloseHost(options.host);
+        /**
+         * Handles the response from http/s request
+         * @param {object} response
+         * @param {string} data
+         */
+        const responseHandler = (response, data) => {
+            if (!(response.statusCode >= 200 && response.statusCode <= 299) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
+                return reject({statusCode: response.statusCode, data, response});
+            }
+            return resolve({data, response});
+
+        }
+        let data = '';
+        const request = http_library.request(options, (response) => {
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+            response.on('end', () => {
+                responseHandler(response, data);
+            });
+            response.on('close', () => {
+                if (isEarlyClose) {
+                    responseHandler(response, data);
+                }
+            });
+        });
+        request.on('error', (e) => {
+            return reject(e);
+        });
+        if ((options.method === 'POST' || options.method === 'PUT') && post_body) {
+            request.write(post_body);
+        }
+        request.end();
+    });
 }
