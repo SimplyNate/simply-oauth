@@ -96,22 +96,14 @@ class OAuth {
         return hash;
     }
 
-    _createClient(port, hostname, method, path, headers, sslEnabled) {
-        const options = {
+    _createOptions(port, hostname, method, path, headers) {
+        return {
             host: hostname,
             port,
             path,
             method,
             headers
         };
-        let httpModel;
-        if (sslEnabled) {
-            httpModel = https;
-        }
-        else {
-            httpModel = http;
-        }
-        return httpModel.request(options);
     }
 
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
@@ -158,110 +150,68 @@ class OAuth {
     }
 
     _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
-        return new Promise((resolve, reject) => {
-            const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
-            if (!post_content_type) {
-                post_content_type = 'application/x-www-form-urlencoded';
+        const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
+        if (!post_content_type) {
+            post_content_type = 'application/x-www-form-urlencoded';
+        }
+        const parsedUrl = new URL(url);
+        if (parsedUrl.protocol === 'http:' && !parsedUrl.port) {
+            parsedUrl.port = '80';
+        }
+        if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
+            parsedUrl.port = '443';
+        }
+        const headers = {};
+        const authorization = this._buildAuthorizationHeaders(orderedParameters);
+        if (this._isEcho) {
+            headers['X-Verify-Credentials-Authorization'] = authorization;
+        }
+        else {
+            headers.Authorization = authorization;
+        }
+        headers.Host = parsedUrl.host
+        for (const key of Object.keys(this._headers)) {
+            headers[key] = this._headers[key];
+        }
+        // Filter out any passed extra_params that are really to do with OAuth
+        for (const key of Object.keys(extra_params)) {
+            if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
+                delete extra_params[key];
             }
-            const parsedUrl = new URL(url);
-            if (parsedUrl.protocol === 'http:' && !parsedUrl.port) {
-                parsedUrl.port = '80';
-            }
-            if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
-                parsedUrl.port = '443';
-            }
-            const headers = {};
-            const authorization = this._buildAuthorizationHeaders(orderedParameters);
-            if (this._isEcho) {
-                headers['X-Verify-Credentials-Authorization'] = authorization;
-            }
-            else {
-                headers.Authorization = authorization;
-            }
-            headers.Host = parsedUrl.host
-            for (const key of Object.keys(this._headers)) {
-                headers[key] = this._headers[key];
-            }
-            // Filter out any passed extra_params that are really to do with OAuth
-            for (const key of Object.keys(extra_params)) {
-                if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
-                    delete extra_params[key];
-                }
-            }
-            if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
-                // Fix the mismatch between the output of querystring.stringify() and OAuthUtils.encodeData()
-                post_body = querystring.stringify(extra_params)
-                    .replace(/!/g, '%21')
-                    .replace(/'/g, '%27')
-                    .replace(/\(/g, '%28')
-                    .replace(/\)/g, '%29')
-                    .replace(/\*/g, '%2A');
-            }
-            if (post_body) {
-                if (Buffer.isBuffer(post_body)) {
-                    headers['Content-length'] = post_body.length;
-                }
-                else {
-                    headers['Content-length'] = Buffer.byteLength(post_body);
-                }
-            } else {
-                headers['Content-length'] = 0;
-            }
-            headers['Content-Type'] = post_content_type;
-            let path;
-            if (!parsedUrl.pathname || parsedUrl.pathname === '') {
-                parsedUrl.pathname = '/';
-            }
-            if (parsedUrl.query) {
-                path = `${parsedUrl.pathname}?${parsedUrl.query}`;
+        }
+        if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
+            // Fix the mismatch between the output of querystring.stringify() and OAuthUtils.encodeData()
+            post_body = querystring.stringify(extra_params)
+                .replace(/!/g, '%21')
+                .replace(/'/g, '%27')
+                .replace(/\(/g, '%28')
+                .replace(/\)/g, '%29')
+                .replace(/\*/g, '%2A');
+        }
+        if (post_body) {
+            if (Buffer.isBuffer(post_body)) {
+                headers['Content-length'] = post_body.length;
             }
             else {
-                path = parsedUrl.pathname;
+                headers['Content-length'] = Buffer.byteLength(post_body);
             }
-            const isHttps = parsedUrl.protocol === 'https:';
-            const request = this._createClient(parsedUrl.port, parsedUrl.hostname, method, path, headers, isHttps);
-            const clientOptions = this._clientOptions;
-            let data = '';
-            // Some hosts *cough* google appear to close the connection early / send no content-length header
-            // allow this behaviour.
-            const isEarlyClose = OAuthUtils.isAnEarlyCloseHost(parsedUrl.hostname);
-            const responseHandler = async (response) => {
-                if (OAuthUtils.responseIsOkay(response)) {
-                    return resolve({data, response});
-                }
-                else if (OAuthUtils.responseIsRedirect(response, clientOptions)) {
-                    try {
-                        const ret = await this._performSecureRequest(oauth_token, oauth_token_secret, method, response.headers.location, extra_params, post_body, post_content_type);
-                        return resolve(ret);
-                    }
-                    catch (e) {
-                        return reject(e);
-                    }
-                }
-                return reject({data, response});
-            }
-            request.on('response', (response) => {
-                response.setEncoding('utf8');
-                response.on('data', (chunk) => {
-                    data += chunk;
-                });
-                response.on('end', async () => {
-                    await responseHandler(response);
-                });
-                response.on('close', async () => {
-                    if (isEarlyClose) {
-                        await responseHandler(response);
-                    }
-                });
-            });
-            request.on('error', (err) => {
-                return reject(err);
-            });
-            if ((method === 'POST' || method === 'PUT') && post_body !== null && post_body !== '') {
-                request.write(post_body);
-            }
-            request.end();
-        });
+        } else {
+            headers['Content-length'] = 0;
+        }
+        headers['Content-Type'] = post_content_type;
+        let path;
+        if (!parsedUrl.pathname || parsedUrl.pathname === '') {
+            parsedUrl.pathname = '/';
+        }
+        if (parsedUrl.query) {
+            path = `${parsedUrl.pathname}?${parsedUrl.query}`;
+        }
+        else {
+            path = parsedUrl.pathname;
+        }
+        const options = this._createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
+        const http_library = OAuthUtils.chooseHttpLibrary(parsedUrl);
+        return OAuthUtils.executeRequest(http_library, options, post_body)
     }
 
     setClientOptions(options) {
