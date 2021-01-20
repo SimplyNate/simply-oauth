@@ -1,7 +1,5 @@
 const crypto = require('crypto');
 const sha1 = require('./sha1');
-const http = require('http');
-const https = require('https');
 // const URL = require('url');
 const querystring = require('querystring');
 const OAuthUtils = require('./_utils');
@@ -149,6 +147,18 @@ class OAuth {
         return orderedParameters;
     }
 
+    /**
+     *
+     * @param oauth_token
+     * @param oauth_token_secret
+     * @param method
+     * @param url
+     * @param extra_params
+     * @param post_body
+     * @param post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     * @private
+     */
     _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
         if (!post_content_type) {
@@ -228,21 +238,23 @@ class OAuth {
         this._clientOptions = mergedOptions;
     }
 
-    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-        try {
+    getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
+        return new Promise((resolve, reject) => {
             const extraParams = {};
             extraParams.oauth_verifier = oauth_verifier;
-            const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
-            const results = querystring.parse(data);
-            const oauth_access_token = results.oauth_token;
-            delete results.oauth_token;
-            const oauth_access_token_secret = results.oauth_token_secret;
-            delete results.oauth_token_secret;
-            return { oauth_access_token, oauth_access_token_secret, results, response };
-        }
-        catch (e) {
-            throw e;
-        }
+            // ESLint was throwing weird error when using async / await
+            this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null)
+                .then(({ data, response }) => {
+                    const results = querystring.parse(data);
+                    const oauth_access_token = results.oauth_token;
+                    delete results.oauth_token;
+                    const oauth_access_token_secret = results.oauth_token_secret;
+                    delete results.oauth_token_secret;
+                    return resolve({ oauth_access_token, oauth_access_token_secret, results, response });
+                }).catch((reason) => {
+                    reject(reason);
+            });
+        });
     }
 
     delete(url, oauth_token, oauth_token_secret) {
