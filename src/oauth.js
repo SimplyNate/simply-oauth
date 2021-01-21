@@ -238,23 +238,17 @@ class OAuth {
         this._clientOptions = mergedOptions;
     }
 
-    getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-        return new Promise((resolve, reject) => {
+    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
             const extraParams = {};
             extraParams.oauth_verifier = oauth_verifier;
             // ESLint was throwing weird error when using async / await
-            this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null)
-                .then(({ data, response }) => {
-                    const results = querystring.parse(data);
-                    const oauth_access_token = results.oauth_token;
-                    delete results.oauth_token;
-                    const oauth_access_token_secret = results.oauth_token_secret;
-                    delete results.oauth_token_secret;
-                    return resolve({ oauth_access_token, oauth_access_token_secret, results, response });
-                }).catch((reason) => {
-                    reject(reason);
-            });
-        });
+            const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+            const results = querystring.parse(data);
+            const oauth_access_token = results.oauth_token;
+            delete results.oauth_token;
+            const oauth_access_token_secret = results.oauth_token_secret;
+            delete results.oauth_token_secret;
+            return { oauth_access_token, oauth_access_token_secret, results, response };
     }
 
     delete(url, oauth_token, oauth_token_secret) {
@@ -314,18 +308,13 @@ class OAuth {
         if (this._authorize_callback) {
             extraParams.oauth_callback = this._authorize_callback;
         }
-        try {
-            const { data, response } = await this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
-            const results = querystring.parse(data);
-            const {oauth_token} = results;
-            const {oauth_token_secret} = results;
-            delete results.oauth_token;
-            delete results.oauth_token_secret;
-            return { oauth_token, oauth_token_secret, results, response };
-        }
-        catch (e) {
-            throw e;
-        }
+        const { data, response } = await this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
+        const results = querystring.parse(data);
+        const {oauth_token} = results;
+        const {oauth_token_secret} = results;
+        delete results.oauth_token;
+        delete results.oauth_token_secret;
+        return { oauth_token, oauth_token_secret, results, response };
     }
 
     signUrl(url, oauth_token, oauth_token_secret, method) {
