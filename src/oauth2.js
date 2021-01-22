@@ -170,30 +170,24 @@ class OAuth2 {
         const post_headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         };
-        // eslint-disable-next-line no-useless-catch
+        const { data, response } = await this._request('POST', this._getAccessTokenUrl(), post_headers, post_data);
+        let results;
         try {
-            const { data, response } = await this._request('POST', this._getAccessTokenUrl(), post_headers, post_data);
-            let results;
-            try {
-                // As of http://tools.ietf.org/html/draft-ietf-oauth-v2-07
-                // responses should be in JSON
-                results = JSON.parse(data);
-            }
-            catch (e) {
-                // .... However both Facebook + Github currently use rev05 of the spec
-                // and neither seem to specify a content-type correctly in their response headers :(
-                // clients of these services will suffer a *minor* performance cost of the exception
-                // being thrown
-                results = querystring.parse(data);
-            }
-            const { access_token } = results;
-            const { refresh_token } = results;
-            delete results.refresh_token;
-            return { access_token, refresh_token, results, response }; // callback results =-=
+            // As of http://tools.ietf.org/html/draft-ietf-oauth-v2-07
+            // responses should be in JSON
+            results = JSON.parse(data);
         }
-        catch (error) {
-            throw error;
+        catch (e) {
+            // .... However both Facebook + Github currently use rev05 of the spec
+            // and neither seem to specify a content-type correctly in their response headers :(
+            // clients of these services will suffer a *minor* performance cost of the exception
+            // being thrown
+            results = querystring.parse(data);
         }
+        const { access_token } = results;
+        const { refresh_token } = results;
+        delete results.refresh_token;
+        return { access_token, refresh_token, results, response }; // callback results =-=
 
     }
 
