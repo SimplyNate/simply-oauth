@@ -4,10 +4,10 @@ const https = require('https');
 /**
  * Returns true if this is a host that closes *before* it ends
  * @param {string} hostName
- * @returns boolean
+ * @returns {boolean}
  */
 module.exports.isAnEarlyCloseHost = function (hostName) {
-    return hostName && hostName.includes('.*google(apis)?.com$');
+    return hostName && (hostName.match('.*google(apis)?.com$')).length > 0;
 };
 
 /**

@@ -285,16 +285,16 @@ class OAuth {
      * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
      */
     async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-            const extraParams = {};
-            extraParams.oauth_verifier = oauth_verifier;
-            // ESLint was throwing weird error when using async / await
-            const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
-            const results = querystring.parse(data);
-            const oauth_access_token = results.oauth_token;
-            delete results.oauth_token;
-            const oauth_access_token_secret = results.oauth_token_secret;
-            delete results.oauth_token_secret;
-            return { oauth_access_token, oauth_access_token_secret, results, response };
+        const extraParams = {};
+        extraParams.oauth_verifier = oauth_verifier;
+        // ESLint was throwing weird error when using async / await
+        const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        const results = querystring.parse(data);
+        const oauth_access_token = results.oauth_token;
+        delete results.oauth_token;
+        const oauth_access_token_secret = results.oauth_token_secret;
+        delete results.oauth_token_secret;
+        return { oauth_access_token, oauth_access_token_secret, results, response };
     }
 
     /**
