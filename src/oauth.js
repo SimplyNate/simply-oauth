@@ -49,12 +49,25 @@ class OAuth {
         this._oauthParameterSeperator = ',';
     }
 
+    /**
+     * Generates a signature
+     * @param {string} method
+     * @param {string} url
+     * @param {string} parameters
+     * @param {string} tokenSecret
+     * @returns {string}
+     * @private
+     */
     _getSignature(method, url, parameters, tokenSecret) {
         const signatureBase = OAuthUtils.createSignatureBase(method, url, parameters);
         return this._createSignature(signatureBase, tokenSecret);
     }
 
-    // build the OAuth request authorization header
+    /**
+     * Builds the OAuth request authorization header
+     * @param {array} orderedParameters
+     * @returns {string}
+     */
     _buildAuthorizationHeaders(orderedParameters) {
         let authHeader = 'OAuth ';
         if (this._isEcho) {
@@ -71,6 +84,13 @@ class OAuth {
         return authHeader;
     }
 
+    /**
+     * Create a hash signature
+     * @param {string} signatureBase
+     * @param {string} tokenSecret
+     * @returns {string}
+     * @private
+     */
     _createSignature(signatureBase, tokenSecret) {
         tokenSecret = tokenSecret ? OAuthUtils.encodeData(tokenSecret) : '';
         // consumerSecret is already encoded
@@ -94,6 +114,16 @@ class OAuth {
         return hash;
     }
 
+    /**
+     * Returns a options object
+     * @param {string} port
+     * @param {string} hostname
+     * @param {string} method
+     * @param {string} path
+     * @param {object} headers
+     * @returns {{path, headers, method, port, host}}
+     * @private
+     */
     _createOptions(port, hostname, method, path, headers) {
         return {
             host: hostname,
@@ -104,6 +134,16 @@ class OAuth {
         };
     }
 
+    /**
+     * Prepares parameters for OAuth request
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} method
+     * @param {string} url
+     * @param {object} extra_params
+     * @returns {array}
+     * @private
+     */
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
         const oauthParameters = {
             oauth_timestamp: OAuthUtils.getTimestamp(),
@@ -136,26 +176,26 @@ class OAuth {
                             oauthParameters[`${key}[${key2}]`] = value[key2];
                         }
                     } else {
-                        oauthParameters[key]= value;
+                        oauthParameters[key] = value;
                     }
                 }
             }
             sig = this._getSignature(method, url, OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
         }
         const orderedParameters = OAuthUtils.sortRequestParams(OAuthUtils.makeArrayOfArgumentsHash(oauthParameters));
-        orderedParameters[orderedParameters.length]= ['oauth_signature', sig];
+        orderedParameters[orderedParameters.length] = ['oauth_signature', sig];
         return orderedParameters;
     }
 
     /**
-     *
-     * @param oauth_token
-     * @param oauth_token_secret
-     * @param method
-     * @param url
-     * @param extra_params
-     * @param post_body
-     * @param post_content_type
+     * Formats a request and sends it to an endpoint
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} method
+     * @param {string} url
+     * @param {object|null} extra_params
+     * @param {(string|null)} post_body
+     * @param {(string|null)} post_content_type
      * @returns {Promise<{data: string, response: Object}>}
      * @private
      */
@@ -165,12 +205,7 @@ class OAuth {
             post_content_type = 'application/x-www-form-urlencoded';
         }
         const parsedUrl = new URL(url);
-        if (parsedUrl.protocol === 'http:' && !parsedUrl.port) {
-            parsedUrl.port = '80';
-        }
-        if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
-            parsedUrl.port = '443';
-        }
+        parsedUrl.port = !parsedUrl ? (parsedUrl.protocol === 'http:' ? '80' : '443') : parsedUrl.port;
         const headers = {};
         const authorization = this._buildAuthorizationHeaders(orderedParameters);
         if (this._isEcho) {
@@ -224,6 +259,10 @@ class OAuth {
         return OAuthUtils.executeRequest(http_library, options, post_body)
     }
 
+    /**
+     * Sets client options from argument
+     * @param {object} options
+     */
     setClientOptions(options) {
         let key;
         const mergedOptions = {}
@@ -238,6 +277,13 @@ class OAuth {
         this._clientOptions = mergedOptions;
     }
 
+    /**
+     * Gets an OAuth access token and returns a object containing the results
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} oauth_verifier
+     * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
+     */
     async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
             const extraParams = {};
             extraParams.oauth_verifier = oauth_verifier;
@@ -251,14 +297,39 @@ class OAuth {
             return { oauth_access_token, oauth_access_token_secret, results, response };
     }
 
+    /**
+     * Sends an OAuth request with DELETE method
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @returns {Promise<{data: string, response: Object}>}
+     */
     delete(url, oauth_token, oauth_token_secret) {
         return this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
     }
 
+    /**
+     * Sends an OAuth request with GET method
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @returns {Promise<{data: string, response: Object}>}
+     */
     get(url, oauth_token, oauth_token_secret) {
         return this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
     }
 
+    /**
+     * Sends a PUT or POST request depending on the method
+     * @param {('PUT'|'POST')} method
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {(string|object)} post_body
+     * @param {(string|null)} post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     * @private
+     */
     _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
         let extra_params = null;
         if (typeof post_content_type === 'function') {
@@ -272,10 +343,28 @@ class OAuth {
         return this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
     }
 
+    /**
+     * Sends an OAuth request with PUT method
+     * @param url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {(string|object)} post_body
+     * @param {string} post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     */
     async put(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
         return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
+    /**
+     * Sends an OAuth request with POST method
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {(string|object)} post_body
+     * @param {string} post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     */
     async post(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
         return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
@@ -298,8 +387,9 @@ class OAuth {
      *
      * N.B. This method will HTTP POST verbs by default, if you wish to override this behaviour you will
      * need to provide a requestTokenHttpMethod option when creating the client.
-     *
-     **/
+     * @param {(function|object)} extraParams
+     * @returns {Promise<{oauth_token: string | string[], response: Object, oauth_token_secret: string | string[], results: ParsedUrlQuery}>}
+     */
     async getOAuthRequestToken(extraParams) {
         if (typeof extraParams === 'function'){
             extraParams = {};
@@ -317,10 +407,16 @@ class OAuth {
         return { oauth_token, oauth_token_secret, results, response };
     }
 
+    /**
+     * Generates a signed URL string
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} method
+     * @returns {string}
+     */
     signUrl(url, oauth_token, oauth_token_secret, method) {
-        if (method === undefined) {
-            method = 'GET';
-        }
+        method = method ? method : 'GET';
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
         const parsedUrl = URL.parse(url, false);
         let query = '';
@@ -331,10 +427,16 @@ class OAuth {
         return `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}?${query}`;
     }
 
+    /**
+     * Returns the auth header string
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} method
+     * @returns {string}
+     */
     authHeader(url, oauth_token, oauth_token_secret, method) {
-        if (method === undefined) {
-            method = 'GET';
-        }
+        method = method ? method : 'GET';
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
         return this._buildAuthorizationHeaders(orderedParameters);
     }
