@@ -12,8 +12,8 @@ module.exports.isAnEarlyCloseHost = function (hostName) {
 
 /**
  * Adds all the key/value pairs of the 'from' object to the 'to' object
- * @param from
- * @param to
+ * @param {object} from
+ * @param {object} to
  */
 module.exports.combineObjects = function (from, to) {
     let i = 0;
@@ -54,6 +54,11 @@ module.exports.decodeData = function (toDecode) {
     return decodeURIComponent(toDecode);
 }
 
+/**
+ * Returns a normalized URL using parsed URL components
+ * @param {string} url
+ * @returns {string}
+ */
 module.exports.normalizeUrl = function (url) {
     const parsedUrl = new URL(url);
     let port = '';
@@ -69,20 +74,35 @@ module.exports.normalizeUrl = function (url) {
     return `${parsedUrl.protocol}//${parsedUrl.hostname}${port}${parsedUrl.pathname}`;
 }
 
+/**
+ * Creates a string signature base
+ * @param {string} method
+ * @param {string} url
+ * @param {string} parameters
+ * @returns {string}
+ */
 module.exports.createSignatureBase = function (method, url, parameters) {
     url = this.encodeData(this.normalizeUrl(url));
     parameters = this.encodeData(parameters);
     return `${method.toUpperCase()}&${url}&${parameters}`;
 }
 
-// Is the parameter considered an OAuth parameter
+/**
+ * Determines whether a parameter is considered an OAuth parameter
+ * @param {string} parameter
+ * @returns {boolean}
+ */
 module.exports.isParameterNameAnOAuthParameter = function (parameter) {
     const m = parameter.match('^oauth_');
     return !!(m && (m[0] === 'oauth_'));
 }
 
-// Takes an object literal that represents the arguments, and returns an array
-// of argument/value pairs.
+/**
+ * Takes an object literal that represents the arguments, and returns an array
+ * of argument/value pairs.
+ * @param {object} argumentsHash
+ * @returns {[]}
+ */
 module.exports.makeArrayOfArgumentsHash = function (argumentsHash) {
     const argument_pairs = [];
     for (const key of Object.keys(argumentsHash)) {
@@ -99,7 +119,10 @@ module.exports.makeArrayOfArgumentsHash = function (argumentsHash) {
     return argument_pairs;
 }
 
-// Sorts the encoded key value pairs by encoded name, then encoded value
+/**
+ * Sorts the encoded key value pairs by encoded name, then encoded value
+ * @param {array} argument_pairs
+ */
 module.exports.sortRequestParams = function (argument_pairs) {
     // Sort by name, then value.
     argument_pairs.sort((a, b) => {
@@ -108,9 +131,13 @@ module.exports.sortRequestParams = function (argument_pairs) {
         }
         return a[0] < b[0] ? -1 : 1;
     });
-    return argument_pairs;
 }
 
+/**
+ * Normalizes args to request parameter format
+ * @param {object} args
+ * @returns {string}
+ */
 module.exports.normaliseRequestParams = function (args) {
     let argument_pairs = this.makeArrayOfArgumentsHash(args);
     // First encode them #3.4.1.3.2 .1
@@ -133,12 +160,21 @@ module.exports.normaliseRequestParams = function (args) {
     return newArgs;
 }
 
+/**
+ * A list of NONCE characters
+ * @type {string[]}
+ */
 module.exports.NONCE_CHARS = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n',
     'o','p','q','r','s','t','u','v','w','x','y','z','A','B',
     'C','D','E','F','G','H','I','J','K','L','M','N','O','P',
     'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
     '4','5','6','7','8','9'];
 
+/**
+ * Gets a string-joined list of NONCE characters based on the nonce size
+ * @param {number} nonceSize
+ * @returns {string}
+ */
 module.exports.getNonce = function (nonceSize) {
     const result = [];
     const chars = this.NONCE_CHARS;
@@ -151,15 +187,29 @@ module.exports.getNonce = function (nonceSize) {
     return result.join('');
 }
 
-
+/**
+ * Checks if the status code is in the 200s
+ * @param {object} response
+ * @returns {boolean}
+ */
 module.exports.responseIsOkay = function (response) {
     return response.statusCode >= 200 && response.statusCode <= 299;
 }
 
+/**
+ * Checks if the status code is in the 300s
+ * @param {object} response
+ * @param {object} clientOptions
+ * @returns {boolean}
+ */
 module.exports.responseIsRedirect = function (response, clientOptions) {
-    return (response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response.headers && response.headers.location;
+    return (response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response.headers && response.headers?.location;
 }
 
+/**
+ * Gets a timestamp in seconds
+ * @returns {number}
+ */
 module.exports.getTimestamp = function () {
     return Math.floor((new Date()).getTime() / 1000);
 }
@@ -174,7 +224,7 @@ module.exports.chooseHttpLibrary = function (parsedUrl) {
 }
 
 /**
- *
+ * Performs the http/s oauth request
  * @param {(http|https)} http_library
  * @param {object} options
  * @param {*} post_body
