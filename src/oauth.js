@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const sha1 = require('./sha1');
 // const URL = require('url');
 const querystring = require('querystring');
 const OAuthUtils = require('./_utils');
@@ -104,12 +103,7 @@ class OAuth {
             hash = crypto.createSign('RSA-SHA1').update(signatureBase).sign(key, 'base64');
         }
         else {
-            if (crypto.Hmac) {
-                hash = crypto.createHmac('sha1', key).update(signatureBase).digest('base64');
-            }
-            else {
-                hash = sha1.HMACSHA1(key, signatureBase);
-            }
+            hash = crypto.createHmac('sha1', key).update(signatureBase).digest('base64');
         }
         return hash;
     }
@@ -182,7 +176,8 @@ class OAuth {
             }
             sig = this._getSignature(method, url, OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
         }
-        const orderedParameters = OAuthUtils.sortRequestParams(OAuthUtils.makeArrayOfArgumentsHash(oauthParameters));
+        const orderedParameters = OAuthUtils.makeArrayOfArgumentsHash(oauthParameters);
+        OAuthUtils.sortRequestParams(orderedParameters);
         orderedParameters[orderedParameters.length] = ['oauth_signature', sig];
         return orderedParameters;
     }
