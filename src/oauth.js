@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-// const URL = require('url');
 const querystring = require('querystring');
 const OAuthUtils = require('./_utils');
 
