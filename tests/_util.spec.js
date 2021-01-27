@@ -86,7 +86,7 @@ describe('normalizeRequestParams', () => {
             oauth_nonce: '7d8f3e4a',
             c2 :  ''
         };
-        const normalisedParameterString= oa._normaliseRequestParams(parameters);
-        assert.equal(normalisedParameterString, 'a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7');
+        const normalisedParameterString = OAuthUtils.normaliseRequestParams(parameters);
+        expect(normalisedParameterString).toBe('a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7');
     });
 });

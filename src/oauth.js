@@ -404,12 +404,12 @@ class OAuth {
     /**
      * Generates a signed URL string
      * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {string} method
+     * @param {string|null} oauth_token
+     * @param {string|null} oauth_token_secret
+     * @param {string|null} method
      * @returns {string}
      */
-    signUrl(url, oauth_token, oauth_token_secret, method) {
+    signUrl(url, oauth_token=null, oauth_token_secret=null, method=null) {
         method = method ? method : 'GET';
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
         const parsedUrl = URL.parse(url, false);
@@ -426,10 +426,10 @@ class OAuth {
      * @param {string} url
      * @param {string} oauth_token
      * @param {string} oauth_token_secret
-     * @param {string} method
+     * @param {string|null} method
      * @returns {string}
      */
-    authHeader(url, oauth_token, oauth_token_secret, method) {
+    authHeader(url, oauth_token, oauth_token_secret, method=null) {
         method = method ? method : 'GET';
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
         return this._buildAuthorizationHeaders(orderedParameters);
