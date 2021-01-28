@@ -7,7 +7,7 @@ const https = require('https');
  * @returns {boolean}
  */
 module.exports.isAnEarlyCloseHost = function (hostName) {
-    return hostName && (hostName.match('.*google(apis)?.com$')).length > 0;
+    return hostName && (hostName.match(/.*google(apis)?.com$/))?.length > 0;
 };
 
 /**
@@ -139,14 +139,14 @@ module.exports.sortRequestParams = function (argument_pairs) {
  * @returns {string}
  */
 module.exports.normaliseRequestParams = function (args) {
-    let argument_pairs = this.makeArrayOfArgumentsHash(args);
+    const argument_pairs = this.makeArrayOfArgumentsHash(args);
     // First encode them #3.4.1.3.2 .1
     for (let i = 0; i < argument_pairs.length; i++) {
         argument_pairs[i][0] = this.encodeData(argument_pairs[i][0]);
         argument_pairs[i][1] = this.encodeData(argument_pairs[i][1]);
     }
     // Then sort them #3.4.1.3.2 .2
-    argument_pairs = this.sortRequestParams(argument_pairs);
+    this.sortRequestParams(argument_pairs);
     // Then concatenate together #3.4.1.3.2 .3 & .4
     let newArgs = '';
     for (let i = 0; i < argument_pairs.length; i++) {
@@ -217,7 +217,7 @@ module.exports.getTimestamp = function () {
 /**
  * Returns the correct http/s library for the protocol
  * @param {URL} parsedUrl
- * @returns {(https|http)}
+ * @returns {module:https|module:http}
  */
 module.exports.chooseHttpLibrary = function (parsedUrl) {
     return parsedUrl.protocol === 'https:' ? https : http;
