@@ -1,5 +1,28 @@
 const OAuthUtils = require('../src/_utils');
 
+describe('isAnEarlyCloseHost', () => {
+    it('should return true if google.com or googleapis.com appears', () => {
+        const google = 'https://google.com';
+        const googleApi = 'https://googleapis.com';
+        expect(OAuthUtils.isAnEarlyCloseHost(google)).toBeTruthy();
+        expect(OAuthUtils.isAnEarlyCloseHost(googleApi)).toBeTruthy();
+    });
+    it('should return false if google or googleapis are not in the url', () => {
+        const notGoogle = 'https://foo.bar/abc';
+        expect(OAuthUtils.isAnEarlyCloseHost(notGoogle)).toBeFalsy();
+    });
+});
+
+describe('combineObjects', () => {
+    it('should copy the key:value pairs from the first arg object to the second arg object', () => {
+        const fromObject = { a: 'a', b: 'b', c: 'c' };
+        const toObject = { d: 'd', e: 'e', f: 'f' };
+        OAuthUtils.combineObjects(fromObject, toObject);
+        const expected = { a: 'a', b: 'b', c: 'c', d: 'd', e: 'e', f: 'f' };
+        expect(toObject).toEqual(expected);
+    });
+});
+
 describe('createSignatureBase', () => {
     it('should create a valid signature base as described in http://oauth.net/core/1.0/#sig_base_example', () => {
         const result = OAuthUtils.createSignatureBase(
@@ -45,7 +68,8 @@ describe('sortRequestParams', () => {
             a: 'b',
             '1': 'c'
         };
-        const parameterResults = OAuthUtils.sortRequestParams(OAuthUtils.makeArrayOfArgumentsHash(parameters));
+        const parameterResults = OAuthUtils.makeArrayOfArgumentsHash(parameters);
+        OAuthUtils.sortRequestParams(parameterResults);
         expect(parameterResults[0][0]).toBe('1');
         expect(parameterResults[1][0]).toBe('a');
         expect(parameterResults[2][0]).toBe('z');
@@ -56,7 +80,8 @@ describe('sortRequestParams', () => {
             a: ['z', 'b', 'b', 'a', 'y'],
             '1': 'c'
         };
-        const parameterResults= OAuthUtils.sortRequestParams(OAuthUtils.makeArrayOfArgumentsHash(parameters))
+        const parameterResults = OAuthUtils.makeArrayOfArgumentsHash(parameters);
+        OAuthUtils.sortRequestParams(parameterResults);
         expect(parameterResults[0][0]).toBe('1');
         expect(parameterResults[1][0]).toBe('a');
         expect(parameterResults[1][1]).toBe('a');

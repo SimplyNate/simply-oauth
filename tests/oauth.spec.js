@@ -129,93 +129,63 @@ describe('OAuth.authHeader', () => {
         expect(oauth.authHeader('http://somehost.com:3323/foo/poop?bar=foo', 'token', 'tokensecret')).toBe('OAuth oauth_consumer_key="consumerkey", oauth_nonce="ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp", oauth_signature_method="HMAC-SHA1", oauth_timestamp="1272399856", oauth_token="token", oauth_version="1.0", oauth_signature="zeOR0Wsm6EG6XSg0Vw%2FsbpoSib8%3D"');
     });
 });
-describe()
-    'When non standard ports are used': {
-        topic() {
-            const oa= new OAuth(null, null, null, null, null, null, 'HMAC-SHA1'),
-                mockProvider= {};
+describe('OAuth._buildAuthorizationHeaders', () => {
+    const oauth = new OAuth(null, null, null, null, null, null, 'HMAC-SHA1');
+    it('should concatenate all provided oauth arguments correctly', () => {
+        const parameters = [
+            ['oauth_timestamp', '1234567'],
+            ['oauth_nonce', 'ABCDEF'],
+            ['oauth_version', '1.0'],
+            ['oauth_signature_method', 'HMAC-SHA1'],
+            ['oauth_consumer_key', 'asdasdnm2321b3']
+        ];
+        expect(oauth._buildAuthorizationHeaders(parameters)).toBe('OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
+    });
+    it('should only concatenate oauth specific arguments, discarding all others', () => {
+        const parameters = [
+            ['foo', '2343'],
+            ['oauth_timestamp', '1234567'],
+            ['oauth_nonce', 'ABCDEF'],
+            ['bar', 'dfsdfd'],
+            ['oauth_version', '1.0'],
+            ['oauth_signature_method', 'HMAC-SHA1'],
+            ['oauth_consumer_key', 'asdasdnm2321b3'],
+            ['foobar', 'asdasdnm2321b3']
+        ];
+        expect(oauth._buildAuthorizationHeaders(parameters)).toBe('OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
+    });
+    it('should not depend on Array.prototype.toString', () => {
+        const _toString = Array.prototype.toString;
+        Array.prototype.toString = function() { return '[Array] ' + this.length; };
+        const parameters = [
+            ['foo', '2343'],
+            ['oauth_timestamp', '1234567'],
+            ['oauth_nonce', 'ABCDEF'],
+            ['bar', 'dfsdfd'],
+            ['oauth_version', '1.0'],
+            ['oauth_signature_method', 'HMAC-SHA1'],
+            ['oauth_consumer_key', 'asdasdnm2321b3'],
+            ['foobar', 'asdasdnm2321b3']
+        ];
+        expect(oauth._buildAuthorizationHeaders(parameters)).toBe('OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
+        Array.prototype.toString = _toString;
 
-            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                assert.equal(headers.Host, 'somehost.com:8080');
-                assert.equal(hostname, 'somehost.com');
-                assert.equal(port, '8080');
-                return {
-                    on() {},
-                    end() {}
-                };
-            }
-            return oa;
-        },
-        'getProtectedResource should correctly define the host headers'(oa) {
-            oa.getProtectedResource('http://somehost.com:8080', 'GET', 'oauth_token', null, () => {})
-        }
-    },
-    'When building the OAuth Authorization header': {
-        topic: new OAuth(null, null, null, null, null, null, 'HMAC-SHA1'),
-        'All provided oauth arguments should be concatentated correctly'(oa) {
-            const parameters= [
-                ['oauth_timestamp',         '1234567'],
-                ['oauth_nonce',             'ABCDEF'],
-                ['oauth_version',           '1.0'],
-                ['oauth_signature_method',  'HMAC-SHA1'],
-                ['oauth_consumer_key',      'asdasdnm2321b3']];
-            assert.equal(oa._buildAuthorizationHeaders(parameters), 'OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
-        },
-        '*Only* Oauth arguments should be concatentated, others should be disregarded'(oa) {
-            const parameters= [
-                ['foo',         '2343'],
-                ['oauth_timestamp',         '1234567'],
-                ['oauth_nonce',             'ABCDEF'],
-                ['bar',             'dfsdfd'],
-                ['oauth_version',           '1.0'],
-                ['oauth_signature_method',  'HMAC-SHA1'],
-                ['oauth_consumer_key',      'asdasdnm2321b3'],
-                ['foobar',      'asdasdnm2321b3']];
-            assert.equal(oa._buildAuthorizationHeaders(parameters), 'OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
-        },
-        '_buildAuthorizationHeaders should not depends on Array.prototype.toString'(oa) {
-            const _toString = Array.prototype.toString;
-            Array.prototype.toString = function(){ return '[Array] ' + this.length; }; // toString overwrite example used in jsdom.
-            const parameters= [
-                ['foo',         '2343'],
-                ['oauth_timestamp',         '1234567'],
-                ['oauth_nonce',             'ABCDEF'],
-                ['bar',             'dfsdfd'],
-                ['oauth_version',           '1.0'],
-                ['oauth_signature_method',  'HMAC-SHA1'],
-                ['oauth_consumer_key',      'asdasdnm2321b3'],
-                ['foobar',      'asdasdnm2321b3']];
-            assert.equal(oa._buildAuthorizationHeaders(parameters), 'OAuth oauth_timestamp="1234567",oauth_nonce="ABCDEF",oauth_version="1.0",oauth_signature_method="HMAC-SHA1",oauth_consumer_key="asdasdnm2321b3"');
-            Array.prototype.toString = _toString;
-        }
-    },
-    'When performing the Secure Request' : {
-        topic: new OAuth('http://foo.com/RequestToken',
-            'http://foo.com/AccessToken',
-            'anonymous',  'anonymous',
-            '1.0A', 'http://foo.com/callback', 'HMAC-SHA1'),
-        'using the POST method' : {
-            'Any passed extra_params should form part of the POST body'(oa) {
-                let post_body_written= false;
-                const op= oa._createClient;
-                try {
-                    oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                        return {
-                            write(post_body){
-                                post_body_written= true;
-                                assert.equal(post_body,'scope=foobar%2C1%2C2');
-                            }
-                        };
-                    }
-                    oa._performSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/protected_resource', {scope: 'foobar,1,2'});
-                    assert.equal(post_body_written, true);
-                }
-                finally {
-                    oa._createClient= op;
-                }
-            }
-        }
-    },
+    });
+});
+describe('OAuth._performSecureRequest', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
+    it('should return a request object if no callback is passed', () => {
+
+    });
+});
     'When performing a secure' : {
         topic: new OAuth('http://foo.com/RequestToken',
             'http://foo.com/AccessToken',
