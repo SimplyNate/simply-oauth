@@ -229,11 +229,11 @@ module.exports.chooseHttpLibrary = function (parsedUrl) {
  * Performs the http/s oauth request
  * @param {(http|https)} http_library
  * @param {object} options
- * @param {*} post_body
+ * @param {string|null} post_body
  * @returns {Promise<{data: string, response: object}>}
  * @private
  */
-module.exports.executeRequest = function (http_library, options, post_body) {
+module.exports.executeRequest = function (http_library, options, post_body=null) {
     return new Promise((resolve, reject) => {
         // Some hosts *cough* google appear to close the connection early / send no content-length header
         // allow this behaviour.
@@ -244,7 +244,7 @@ module.exports.executeRequest = function (http_library, options, post_body) {
          * @param {string} data
          */
         const responseHandler = (response, data) => {
-            if (!(response.statusCode >= 200 && response.statusCode <= 299) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
+            if (!(this.responseIsOkay(response)) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
                 return reject({statusCode: response.statusCode, data, response});
             }
             return resolve({data, response});

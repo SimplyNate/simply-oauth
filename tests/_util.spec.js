@@ -1,3 +1,4 @@
+const https = require('https');
 const OAuthUtils = require('../src/_utils');
 
 describe('isAnEarlyCloseHost', () => {
@@ -150,7 +151,7 @@ describe('normalizeRequestParams', () => {
 });
 
 describe('NONCE_CHARS', () => {
-    it('should be a list of exxpected letters a-zA-Z0-9', () => {
+    it('should be a list of expected letters a-zA-Z0-9', () => {
         const nonce = OAuthUtils.NONCE_CHARS.join('');
         expect(nonce).toEqual('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
         expect(OAuthUtils.NONCE_CHARS.length).toBe(62);
@@ -233,5 +234,101 @@ describe('chooseHttpLibrary', () => {
 });
 
 describe('executeRequest', () => {
-    //TODO: Write tests testing this
+    it('should successfully send a GET request', async () => {
+        // https://reqres.in/api/users/2
+        const options = {
+            hostname: 'reqres.in',
+            port: 443,
+            path: '/api/users/2',
+            method: 'GET',
+        };
+        const expectedData = {
+            data: {
+                id: 2,
+                email: 'janet.weaver@reqres.in',
+                first_name: 'Janet',
+                last_name: 'Weaver',
+                avatar: 'https://reqres.in/img/faces/2-image.jpg'
+            },
+            support: {
+                url: 'https://reqres.in/#support-heading',
+                text: 'To keep ReqRes free, contributions towards server costs are appreciated!'
+            }
+        };
+        const {data, response} = await OAuthUtils.executeRequest(https, options);
+        const parsedData = JSON.parse(data);
+        expect(response.statusCode).toBe(200);
+        expect(parsedData).toEqual(expectedData);
+    });
+    it('should reject on a 404 GET request', async () => {
+        // https://reqres.in/api/users/23
+        const options = {
+            hostname: 'reqres.in',
+            port: 443,
+            path: '/api/users/23',
+            method: 'GET',
+        };
+        try {
+            await OAuthUtils.executeRequest(https, options);
+        }
+        catch(error) {
+            const { statusCode } = error;
+            expect(statusCode).toBe(404);
+        }
+    });
+    it('should successfully send a POST request', async () => {
+        const post = {
+            name: 'morpheus',
+            job: 'leader'
+        };
+        const postData = JSON.stringify(post);
+        const options = {
+            hostname: 'reqres.in',
+            port: 443,
+            path: '/api/users',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': postData.length
+            }
+        };
+        const {data, response} = await OAuthUtils.executeRequest(https, options, postData);
+        const parsedData = JSON.parse(data);
+        expect(response.statusCode).toBe(201);
+        expect(parsedData.name).toBe(post.name);
+        expect(parsedData.job).toBe(post.job);
+    });
+    it('should successfully  send a PUT request', async () => {
+        const put = {
+            name: 'morpheus',
+            job: 'zion resident'
+        };
+        const putData = JSON.stringify(put);
+        const options = {
+            hostname: 'reqres.in',
+            port: 443,
+            path: '/api/users/2',
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': putData.length
+            }
+        };
+        const {data, response} = await OAuthUtils.executeRequest(https, options, putData);
+        const parsedData = JSON.parse(data);
+        expect(response.statusCode).toBe(200);
+        expect(parsedData.name).toBe(put.name);
+        expect(parsedData.job).toBe(put.job);
+    });
+    it('should successfully send a DELETE request', async () => {
+        const options = {
+            hostname: 'reqres.in',
+            port: 443,
+            path: '/api/users/2',
+            method: 'DELETE',
+        };
+        const {data, response} = await OAuthUtils.executeRequest(https, options);
+        expect(response.statusCode).toBe(204);
+        expect(data).toBe('');
+    });
 });
