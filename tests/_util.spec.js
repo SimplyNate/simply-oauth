@@ -23,16 +23,22 @@ describe('combineObjects', () => {
     });
 });
 
-describe('createSignatureBase', () => {
-    it('should create a valid signature base as described in http://oauth.net/core/1.0/#sig_base_example', () => {
-        const result = OAuthUtils.createSignatureBase(
-            'GET',
-            'http://photos.example.net/photos',
-            'file=vacation.jpg&oauth_consumer_key=dpf43f3p2l4k3l03&oauth_nonce=kllo9940pd9333jh&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1191242096&oauth_token=nnch734d00sl2jdk&oauth_version=1.0&size=original'
-        );
-        expect(result).toBe('GET&http%3A%2F%2Fphotos.example.net%2Fphotos&file%3Dvacation.jpg%26oauth_consumer_key%3Ddpf43f3p2l4k3l03%26oauth_nonce%3Dkllo9940pd9333jh%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1191242096%26oauth_token%3Dnnch734d00sl2jdk%26oauth_version%3D1.0%26size%3Doriginal');
+describe('encodeData', () => {
+    it('should encode special characters', () => {
+        const url = 'http://www.foo.bar/?something=another&another=\'(hello)*\'';
+        const results = OAuthUtils.encodeData(url);
+        expect(results).toBe('http%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27');
     });
 });
+
+describe('decodeData', () => {
+    it('should decode special characters into string representation', () => {
+        const encoded = 'http%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27';
+        const results = OAuthUtils.decodeData(encoded);
+        expect(results).toBe('http://www.foo.bar/?something=another&another=\'(hello)*\'');
+    });
+});
+
 describe('normalizeUrl', () => {
     it('should normalize a url', () => {
         const normal1 = OAuthUtils.normalizeUrl('https://somehost.com:443/foo/bar');
@@ -45,6 +51,33 @@ describe('normalizeUrl', () => {
         expect(normal4).toBe('http://somehost.com/');
     });
 });
+
+describe('createSignatureBase', () => {
+    it('should create a valid signature base as described in http://oauth.net/core/1.0/#sig_base_example', () => {
+        const result = OAuthUtils.createSignatureBase(
+            'GET',
+            'http://photos.example.net/photos',
+            'file=vacation.jpg&oauth_consumer_key=dpf43f3p2l4k3l03&oauth_nonce=kllo9940pd9333jh&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1191242096&oauth_token=nnch734d00sl2jdk&oauth_version=1.0&size=original'
+        );
+        expect(result).toBe('GET&http%3A%2F%2Fphotos.example.net%2Fphotos&file%3Dvacation.jpg%26oauth_consumer_key%3Ddpf43f3p2l4k3l03%26oauth_nonce%3Dkllo9940pd9333jh%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1191242096%26oauth_token%3Dnnch734d00sl2jdk%26oauth_version%3D1.0%26size%3Doriginal');
+    });
+});
+
+describe('isParameterNameAnOAuthParameter', () => {
+    it('should correctly identify all oauth parameters and reject others', () => {
+        const param1 = OAuthUtils.isParameterNameAnOAuthParameter('oauth_param');
+        const param2 = OAuthUtils.isParameterNameAnOAuthParameter('other_param');
+        const param3 = OAuthUtils.isParameterNameAnOAuthParameter('anotherParamOAUTH_');
+        const param4 = OAuthUtils.isParameterNameAnOAuthParameter('param_oauth_');
+        const param5 = OAuthUtils.isParameterNameAnOAuthParameter('_oauth_param');
+        expect(param1).toBeTruthy();
+        expect(param2).toBeFalsy();
+        expect(param3).toBeFalsy();
+        expect(param4).toBeFalsy();
+        expect(param5).toBeFalsy();
+    });
+});
+
 describe('makeArrayOfArgumentsHash', () => {
     it('should make an array of argument hashes and flatten arrays', () => {
         const parameters = {
@@ -114,4 +147,91 @@ describe('normalizeRequestParams', () => {
         const normalisedParameterString = OAuthUtils.normaliseRequestParams(parameters);
         expect(normalisedParameterString).toBe('a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7');
     });
+});
+
+describe('NONCE_CHARS', () => {
+    it('should be a list of exxpected letters a-zA-Z0-9', () => {
+        const nonce = OAuthUtils.NONCE_CHARS.join('');
+        expect(nonce).toEqual('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+        expect(OAuthUtils.NONCE_CHARS.length).toBe(62);
+    });
+});
+
+describe('getNonce', () => {
+    it('should return a concatenated string of nonce characters based on size', () => {
+        const nonce = OAuthUtils.getNonce(16);
+        expect(nonce.match(/[a-zA-Z0-9]/)).toBeDefined();
+    });
+});
+
+describe('responseIsOkay', () => {
+    it('should respond true for codes between 200 and 299 inclusively', () => {
+        expect(OAuthUtils.responseIsOkay({ statusCode: 200 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 201 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 202 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 203 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 204 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 205 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 206 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 207 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 208 })).toBeTruthy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 226 })).toBeTruthy();
+    });
+    it('should respond false for codes not between 200 and 299', () => {
+        expect(OAuthUtils.responseIsOkay({ statusCode: 100 })).toBeFalsy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 301 })).toBeFalsy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 404 })).toBeFalsy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 400 })).toBeFalsy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 500 })).toBeFalsy();
+        expect(OAuthUtils.responseIsOkay({ statusCode: 502 })).toBeFalsy();
+    });
+});
+
+describe('responseIsRedirect', () => {
+    it('should respond true if response code is 301, 302, if the client follows redirect, and if a location is present in the response', () => {
+        const response = { statusCode: 301, headers: { location: 'some.location' }};
+        const clientOptions = { followRedirects: true };
+        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeTruthy();
+        response.statusCode = 302;
+        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeTruthy();
+    });
+    it('should respond false if response code is not 301 or 302', () => {
+        const response = { statusCode: 202, headers: { location: 'some.location' }};
+        const clientOptions = { followRedirects: true };
+        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
+    });
+    it('should respond false if client does not follow redirect', () => {
+        const response = { statusCode: 302, headers: { location: 'some.location' }};
+        const clientOptions = { followRedirects: false };
+        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
+    });
+    it('should respond false if a location is not provided in the headers', () => {
+        const response = { statusCode: 302, headers: {}};
+        const responseNoHeader = { statusCode: 302 };
+        const clientOptions = { followRedirects: true };
+        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
+        expect(OAuthUtils.responseIsRedirect(responseNoHeader, clientOptions)).toBeFalsy();
+    });
+});
+
+describe('getTimestamp', () => {
+    it('should return a Unix timestamp in seconds', () => {
+        expect(OAuthUtils.getTimestamp()).toBeDefined();
+        expect(OAuthUtils.getTimestamp()).toBeGreaterThan(0);
+    });
+});
+
+describe('chooseHttpLibrary', () => {
+    it('should return http or https library depending on the URL protocol', () => {
+        const httpURL = new URL('http://some.url');
+        const httpsURL = new URL('https://some.url');
+        const http = require('http');
+        const https = require('https');
+        expect(OAuthUtils.chooseHttpLibrary(httpURL)).toEqual(http);
+        expect(OAuthUtils.chooseHttpLibrary(httpsURL)).toEqual(https);
+    });
+});
+
+describe('executeRequest', () => {
+    //TODO: Write tests testing this
 });
