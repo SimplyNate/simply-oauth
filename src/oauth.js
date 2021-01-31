@@ -7,11 +7,11 @@ class OAuth {
 
     /**
      * Create an OAuth 1.0/A object to perform requests
-     * @param {string} requestUrl
-     * @param {string} accessUrl
-     * @param {string} consumerKey
-     * @param {string} consumerSecret
-     * @param {string} version
+     * @param {string|null} requestUrl
+     * @param {string|null} accessUrl
+     * @param {string|null} consumerKey
+     * @param {string|null} consumerSecret
+     * @param {string|null} version
      * @param {string} authorize_callback
      * @param {string|null} signatureMethod
      * @param {number} nonceSize
@@ -183,17 +183,17 @@ class OAuth {
 
     /**
      * Formats a request and sends it to an endpoint
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
+     * @param {string|null} oauth_token
+     * @param {string|null} oauth_token_secret
      * @param {string} method
      * @param {string} url
      * @param {object|null} extra_params
      * @param {(string|null)} post_body
      * @param {(string|null)} post_content_type
-     * @returns {Promise<{data: string, response: Object}>}
+     * @returns {{object, object, (string|null)}}
      * @private
      */
-    _performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
+    _prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
         if (!post_content_type) {
             post_content_type = 'application/x-www-form-urlencoded';
@@ -250,7 +250,7 @@ class OAuth {
         }
         const options = this._createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
         const http_library = OAuthUtils.chooseHttpLibrary(parsedUrl);
-        return OAuthUtils.executeRequest(http_library, options, post_body)
+        return { http_library, options, post_body }
     }
 
     /**
@@ -279,10 +279,11 @@ class OAuth {
      * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
      */
     async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-        const extraParams = {};
-        extraParams.oauth_verifier = oauth_verifier;
-        // ESLint was throwing weird error when using async / await
-        const { data, response } = await this._performSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        const extraParams = {
+            oauth_verifier,
+        };
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        const { data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const oauth_access_token = results.oauth_token;
         delete results.oauth_token;
@@ -299,7 +300,8 @@ class OAuth {
      * @returns {Promise<{data: string, response: Object}>}
      */
     delete(url, oauth_token, oauth_token_secret) {
-        return this._performSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
+        return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 
     /**
@@ -310,7 +312,8 @@ class OAuth {
      * @returns {Promise<{data: string, response: Object}>}
      */
     get(url, oauth_token, oauth_token_secret) {
-        return this._performSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
+        return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 
     /**
@@ -334,7 +337,9 @@ class OAuth {
             extra_params = post_body;
             post_body = null;
         }
-        return this._performSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
+        const prepared = this._prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
+        const { http_library, options } = prepared;
+        return OAuthUtils.executeRequest(http_library, options, prepared.post_body);
     }
 
     /**
@@ -392,7 +397,8 @@ class OAuth {
         if (this._authorize_callback) {
             extraParams.oauth_callback = this._authorize_callback;
         }
-        const { data, response } = await this._performSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
+        const { data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const {oauth_token} = results;
         const {oauth_token_secret} = results;
