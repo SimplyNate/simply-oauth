@@ -272,27 +272,6 @@ class OAuth {
     }
 
     /**
-     * Gets an OAuth access token and returns a object containing the results
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {string} oauth_verifier
-     * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
-     */
-    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
-        const extraParams = {
-            oauth_verifier,
-        };
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
-        const { data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
-        const results = querystring.parse(data);
-        const oauth_access_token = results.oauth_token;
-        delete results.oauth_token;
-        const oauth_access_token_secret = results.oauth_token_secret;
-        delete results.oauth_token_secret;
-        return { oauth_access_token, oauth_access_token_secret, results, response };
-    }
-
-    /**
      * Sends an OAuth request with DELETE method
      * @param {string} url
      * @param {string} oauth_token
@@ -405,6 +384,27 @@ class OAuth {
         delete results.oauth_token;
         delete results.oauth_token_secret;
         return { oauth_token, oauth_token_secret, results, response };
+    }
+
+    /**
+     * Gets an OAuth access token and returns a object containing the results
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {string} oauth_verifier
+     * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
+     */
+    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
+        const extraParams = {
+            oauth_verifier,
+        };
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        const { data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
+        const results = querystring.parse(data);
+        const oauth_access_token = results.oauth_token;
+        delete results.oauth_token;
+        const oauth_access_token_secret = results.oauth_token_secret;
+        delete results.oauth_token_secret;
+        return { oauth_access_token, oauth_access_token_secret, results, response };
     }
 
     /**
