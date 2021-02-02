@@ -170,7 +170,7 @@ describe('OAuth._buildAuthorizationHeaders', () => {
 
     });
 });
-describe('OAuth._performSecureRequest', () => {
+describe('OAuth._prepareSecureRequest', () => {
     const oauth = new OAuth(
         'http://foo.com/RequestToken',
         'http://foo.com/AccessToken',
@@ -180,426 +180,75 @@ describe('OAuth._performSecureRequest', () => {
         'http://foo.com/callback',
         'HMAC-SHA1'
     );
-    it('should return a request object if no callback is passed', () => {
+    it('should pass through post_body as is if it is a buffer', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]), 'image/jpeg');
+        expect(preparedRequest.options.headers['Content-Type']).toBe('image/jpeg');
+        expect(preparedRequest.post_body.length).toBe(4);
+    });
+    it('should pass through post_body if buffer and no content-type specified', () => {
+        // Should probably actually set application/octet-stream, but to avoid a change in behaviour
+        // will just document (here) that the library will set it to application/x-www-form-urlencoded
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]));
+        expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+        expect(preparedRequest.post_body.length).toBe(4);
+    });
+    it('should url encode and auto set content type if post_body is not a string or buffer', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, {foo:'1,2,3', bar:'1+2'});
+        expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+        expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
+    });
+    it('should correctly count bytes of a non-ascii string post_body', () => {
+        const testString = 'Tôi yêu node';
+        const testStringLength = testString.length;
+        const testStringBytesLength = Buffer.byteLength(testString);
+        expect(testStringLength === testStringBytesLength).toBeFalsy();
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, testString);
+        expect(preparedRequest.options.headers['Content-Length']).toBe(testStringBytesLength);
+        expect(preparedRequest.post_body).toBe(testString);
+    });
+    it('should take a string with no post_content_type specified as is', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, 'foo=1%2C2%2C3&bar=1%2B2');
+        expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+        expect(preparedRequest.options.headers['Content-Length']).toBe(23);
+        expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
+    });
+    it('should take a string with a post_content_type specified as is', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, 'foo=1%2C2%2C3&bar=1%2B2', 'unicorn/encoded');
+        expect(preparedRequest.options.headers['Content-Type']).toBe('unicorn/encoded');
+        expect(preparedRequest.options.headers['Content-Length']).toBe(23);
+        expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
+    });
 
+    it('should prepare a GET request', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'GET', 'http://foo.com/blah');
+        expect(preparedRequest.options.method).toBe('GET');
+    });
+    it('should prepare a POST request', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah', null, 'foo', 'text/plain');
+        expect(preparedRequest.options.method).toBe('POST');
+    });
+    it('should prepare a PUT request', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'PUT', 'http://foo.com/blah', null, 'foo', 'text/plain');
+        expect(preparedRequest.options.method).toBe('PUT');
+    });
+
+    it('should prepare a DELETE request', () => {
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'DELETE', 'http://foo.com/blah');
+        expect(preparedRequest.options.method).toBe('DELETE');
     });
 });
+describe('OAuth.post', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
+});
     'When performing a secure' : {
-        topic: new OAuth('http://foo.com/RequestToken',
-            'http://foo.com/AccessToken',
-            'anonymous',  'anonymous',
-            '1.0A', 'http://foo.com/callback', 'HMAC-SHA1'),
-        POST : {
-            'if no callback is passed' : {
-                'it should return a request object'(oa) {
-                    const request= oa.post('http://foo.com/blah', 'token', 'token_secret', 'BLAH', 'text/plain')
-                    assert.isObject(request);
-                    assert.equal(request.method, 'POST');
-                    request.end();
-                }
-            },
-            'if a callback is passed' : {
-                'it should call the internal request\'s end method and return nothing'(oa) {
-                    let callbackCalled= false;
-                    const op= oa._createClient;
-                    try {
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            return {
-                                write(){},
-                                on() {},
-                                end() {
-                                    callbackCalled= true;
-                                }
-                            };
-                        }
-                        const request= oa.post('http://foo.com/blah', 'token', 'token_secret', 'BLAH', 'text/plain', (e,d) => {})
-                        assert.equal(callbackCalled, true);
-                        assert.isUndefined(request);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is a buffer' : {
-                'It should be passed through as is, and the original content-type (if specified) should be passed through'(oa) {
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'image/jpeg')
-                            return {
-                                write(data){
-                                    callbackCalled= true;
-                                    assert.equal(data.length, 4);
-                                },
-                                on() {},
-                                end() {
-                                }
-                            };
-                        }
-                        const request= oa.post('http://foo.com/blah', 'token', 'token_secret', new Buffer([10,20,30,40]), 'image/jpeg')
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                },
-                'It should be passed through as is, and no content-type is specified.'(oa) {
-                    //Should probably actually set application/octet-stream, but to avoid a change in behaviour
-                    // will just document (here) that the library will set it to application/x-www-form-urlencoded
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded')
-                            return {
-                                write(data){
-                                    callbackCalled= true;
-                                    assert.equal(data.length, 4);
-                                },
-                                on() {},
-                                end() {
-                                }
-                            };
-                        }
-                        const request= oa.post('http://foo.com/blah', 'token', 'token_secret', new Buffer([10,20,30,40]))
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is not a string or a buffer' : {
-                'It should be url encoded and the content type set to be x-www-form-urlencoded'(oa) {
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded')
-                            return {
-                                write(data){
-                                    callbackCalled= true;
-                                    assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                },
-                                on() {},
-                                end() {
-                                }
-                            };
-                        }
-                        const request= oa.post('http://foo.com/blah', 'token', 'token_secret', {foo:'1,2,3', bar:'1+2'})
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is a string' : {
-                'and it contains non ascii (7/8bit) characters' : {
-                    'the content length should be the byte count, and not the string length'(oa) {
-                        const testString= 'Tôi yêu node';
-                        const testStringLength= testString.length;
-                        const testStringBytesLength= Buffer.byteLength(testString);
-                        assert.notEqual(testStringLength, testStringBytesLength); // Make sure we're testing a string that differs between byte-length and char-length!
-
-                        const op= oa._createClient;
-                        try {
-                            let callbackCalled= false;
-                            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                                assert.equal(headers['Content-length'], testStringBytesLength);
-                                return {
-                                    write(data){
-                                        callbackCalled= true;
-                                        assert.equal(data, testString);
-                                    },
-                                    on() {},
-                                    end() {
-                                    }
-                                };
-                            }
-                            const request= oa.post('http://foo.com/blah', 'token', 'token_secret', 'Tôi yêu node')
-                            assert.equal(callbackCalled, true);
-                        }
-                        finally {
-                            oa._createClient= op;
-                        }
-                    }
-                },
-                'and no post_content_type is specified' : {
-                    'It should be written as is, with a content length specified, and the encoding should be set to be x-www-form-urlencoded'(oa) {
-                        const op= oa._createClient;
-                        try {
-                            let callbackCalled= false;
-                            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                                assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded');
-                                assert.equal(headers['Content-length'], 23);
-                                return {
-                                    write(data){
-                                        callbackCalled= true;
-                                        assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                    },
-                                    on() {},
-                                    end() {
-                                    }
-                                };
-                            }
-                            const request= oa.post('http://foo.com/blah', 'token', 'token_secret', 'foo=1%2C2%2C3&bar=1%2B2')
-                            assert.equal(callbackCalled, true);
-                        }
-                        finally {
-                            oa._createClient= op;
-                        }
-                    }
-                },
-                'and a post_content_type is specified' : {
-                    'It should be written as is, with a content length specified, and the encoding should be set to be as specified'(oa) {
-                        const op= oa._createClient;
-                        try {
-                            let callbackCalled= false;
-                            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                                assert.equal(headers['Content-Type'], 'unicorn/encoded');
-                                assert.equal(headers['Content-length'], 23);
-                                return {
-                                    write(data){
-                                        callbackCalled= true;
-                                        assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                    },
-                                    on() {},
-                                    end() {
-                                    }
-                                };
-                            }
-                            const request= oa.post('http://foo.com/blah', 'token', 'token_secret', 'foo=1%2C2%2C3&bar=1%2B2', 'unicorn/encoded')
-                            assert.equal(callbackCalled, true);
-                        }
-                        finally {
-                            oa._createClient= op;
-                        }
-                    }
-                }
-            }
-        },
-        GET : {
-            'if no callback is passed' : {
-                'it should return a request object'(oa) {
-                    const request= oa.get('http://foo.com/blah', 'token', 'token_secret')
-                    assert.isObject(request);
-                    assert.equal(request.method, 'GET');
-                    request.end();
-                }
-            },
-            'if a callback is passed' : {
-                'it should call the internal request\'s end method and return nothing'(oa) {
-                    let callbackCalled= false;
-                    const op= oa._createClient;
-                    try {
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            return {
-                                on() {},
-                                end() {
-                                    callbackCalled= true;
-                                }
-                            };
-                        }
-                        const request= oa.get('http://foo.com/blah', 'token', 'token_secret', (e,d) => {})
-                        assert.equal(callbackCalled, true);
-                        assert.isUndefined(request);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-        },
-        PUT : {
-            'if no callback is passed' : {
-                'it should return a request object'(oa) {
-                    const request= oa.put('http://foo.com/blah', 'token', 'token_secret', 'BLAH', 'text/plain')
-                    assert.isObject(request);
-                    assert.equal(request.method, 'PUT');
-                    request.end();
-                }
-            },
-            'if a callback is passed' : {
-                'it should call the internal request\'s end method and return nothing'(oa) {
-                    let callbackCalled= 0;
-                    const op= oa._createClient;
-                    try {
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            return {
-                                on() {},
-                                write(data) {
-                                    callbackCalled++;
-                                },
-                                end() {
-                                    callbackCalled++;
-                                }
-                            };
-                        }
-                        const request= oa.put('http://foo.com/blah', 'token', 'token_secret', 'BLAH', 'text/plain', (e,d) => {})
-                        assert.equal(callbackCalled, 2);
-                        assert.isUndefined(request);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is a buffer' : {
-                'It should be passed through as is, and the original content-type (if specified) should be passed through'(oa) {
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'image/jpeg')
-                            return {
-                                write(data){
-                                    callbackCalled= true;
-                                    assert.equal(data.length, 4);
-                                },
-                                on() {},
-                                end() {
-                                }
-                            };
-                        }
-                        const request= oa.put('http://foo.com/blah', 'token', 'token_secret', new Buffer([10,20,30,40]), 'image/jpeg')
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                },
-                'It should be passed through as is, and no content-type is specified.'(oa) {
-                    //Should probably actually set application/octet-stream, but to avoid a change in behaviour
-                    // will just document (here) that the library will set it to application/x-www-form-urlencoded
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded')
-                            return {
-                                write(data){
-                                    callbackCalled= true;
-                                    assert.equal(data.length, 4);
-                                },
-                                on() {},
-                                end() {
-                                }
-                            };
-                        }
-                        const request= oa.put('http://foo.com/blah', 'token', 'token_secret', new Buffer([10,20,30,40]))
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is not a string' : {
-                'It should be url encoded and the content type set to be x-www-form-urlencoded'(oa) {
-                    const op= oa._createClient;
-                    try {
-                        let callbackCalled= false;
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded')
-                            return {
-                                write(data) {
-                                    callbackCalled= true;
-                                    assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                }
-                            };
-                        }
-                        const request= oa.put('http://foo.com/blah', 'token', 'token_secret', {foo:'1,2,3', bar:'1+2'})
-                        assert.equal(callbackCalled, true);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            },
-            'if the post_body is a string' : {
-                'and no post_content_type is specified' : {
-                    'It should be written as is, with a content length specified, and the encoding should be set to be x-www-form-urlencoded'(oa) {
-                        const op= oa._createClient;
-                        try {
-                            let callbackCalled= false;
-                            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                                assert.equal(headers['Content-Type'], 'application/x-www-form-urlencoded');
-                                assert.equal(headers['Content-length'], 23);
-                                return {
-                                    write(data) {
-                                        callbackCalled= true;
-                                        assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                    }
-                                };
-                            }
-                            const request= oa.put('http://foo.com/blah', 'token', 'token_secret', 'foo=1%2C2%2C3&bar=1%2B2')
-                            assert.equal(callbackCalled, true);
-                        }
-                        finally {
-                            oa._createClient= op;
-                        }
-                    }
-                },
-                'and a post_content_type is specified' : {
-                    'It should be written as is, with a content length specified, and the encoding should be set to be as specified'(oa) {
-                        const op= oa._createClient;
-                        try {
-                            let callbackCalled= false;
-                            oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                                assert.equal(headers['Content-Type'], 'unicorn/encoded');
-                                assert.equal(headers['Content-length'], 23);
-                                return {
-                                    write(data) {
-                                        callbackCalled= true;
-                                        assert.equal(data, 'foo=1%2C2%2C3&bar=1%2B2');
-                                    }
-                                };
-                            }
-                            const request= oa.put('http://foo.com/blah', 'token', 'token_secret', 'foo=1%2C2%2C3&bar=1%2B2', 'unicorn/encoded')
-                            assert.equal(callbackCalled, true);
-                        }
-                        finally {
-                            oa._createClient= op;
-                        }
-                    }
-                }
-            }
-        },
-        DELETE : {
-            'if no callback is passed' : {
-                'it should return a request object'(oa) {
-                    const request= oa.delete('http://foo.com/blah', 'token', 'token_secret')
-                    assert.isObject(request);
-                    assert.equal(request.method, 'DELETE');
-                    request.end();
-                }
-            },
-            'if a callback is passed' : {
-                'it should call the internal request\'s end method and return nothing'(oa) {
-                    let callbackCalled= false;
-                    const op= oa._createClient;
-                    try {
-                        oa._createClient= function( port, hostname, method, path, headers, sshEnabled ) {
-                            return {
-                                on() {},
-                                end() {
-                                    callbackCalled= true;
-                                }
-                            };
-                        }
-                        const request= oa.delete('http://foo.com/blah', 'token', 'token_secret', (e,d) => {})
-                        assert.equal(callbackCalled, true);
-                        assert.isUndefined(request);
-                    }
-                    finally {
-                        oa._createClient= op;
-                    }
-                }
-            }
-        },
         'Request With a Callback' : {
             'and a 200 response code is received' : {
                 'it should callback successfully'(oa) {
@@ -923,4 +572,3 @@ describe('OAuth._performSecureRequest', () => {
             }
         }
     }
-}).export(module);

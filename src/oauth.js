@@ -188,7 +188,7 @@ class OAuth {
      * @param {string} method
      * @param {string} url
      * @param {object|null} extra_params
-     * @param {(string|null)} post_body
+     * @param {(string|buffer|null)} post_body
      * @param {(string|null)} post_content_type
      * @returns {{object, object, (string|null)}}
      * @private
@@ -213,9 +213,11 @@ class OAuth {
             headers[key] = this._headers[key];
         }
         // Filter out any passed extra_params that are really to do with OAuth
-        for (const key of Object.keys(extra_params)) {
-            if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
-                delete extra_params[key];
+        if (extra_params) {
+            for (const key of Object.keys(extra_params)) {
+                if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
+                    delete extra_params[key];
+                }
             }
         }
         if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
