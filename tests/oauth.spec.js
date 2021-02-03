@@ -81,11 +81,11 @@ describe('OAuth.signUrl', () => {
     });
 });
 describe('OAuth.getOAuthRequestToken', () => {
-    const OAuthUtils = require('../src/_utils');
-    OAuthUtils.getTimestamp = function() { return '1272399856'; };
-    OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
     oauth._performSecureRequest = function() { return this.requestArguments = arguments; };
+    const OAuthUtils = require('../src/_utils');
+    OAuthUtils.getTimestamp = function() { return 1272399856; };
+    OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     it('should use the HTTP method in the client options', () => {
         oauth.setClientOptions({ requestTokenHttpMethod: 'GET' });
         oauth.getOAuthRequestToken(() => {});
@@ -99,7 +99,7 @@ describe('OAuth.getOAuthRequestToken', () => {
 });
 describe('OAuth.getOAuthAccessToken', () => {
     const OAuthUtils = require('../src/_utils');
-    OAuthUtils.getTimestamp = function() { return '1272399856'; };
+    OAuthUtils.getTimestamp = function() { return 1272399856; };
     OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
     oauth._performSecureRequest = function() { return this.requestArguments = arguments; };
