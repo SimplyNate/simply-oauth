@@ -318,16 +318,6 @@ describe('OAuth.put', () => {
             console.error(e);
         }
     });
-    const options = {
-        hostname: 'reqres.in',
-        port: 443,
-        path: '/api/users/2',
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': putData.length
-        }
-    };
 });
 describe('OAuth.delete', () => {
     it('should perform a DELETE request', async () => {

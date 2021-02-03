@@ -1,6 +1,6 @@
 {
   "name": "simply-oauth",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Fork of node-oauth for interacting with OAuth 1.0, 1.0A, 2 and Echo. Updated to use Async functions rather than callbacks",
   "directories": {
     "lib": "./src"
