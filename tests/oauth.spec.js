@@ -67,7 +67,7 @@ describe('OAuth._prepareParameters', () => {
 });
 describe('OAuth.signUrl', () => {
     const OAuthUtils = require('../src/_utils');
-    OAuthUtils.getTimestamp = function() { return '1272399856' };
+    OAuthUtils.getTimestamp = function() { return 1272399856 };
     OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     const oauth = new OAuth('null', 'null', 'consumerkey', 'consumersecret', '1.0', null, 'HMAC-SHA1');
     it('should provide a valid signature when no token is present', () => {
@@ -188,12 +188,12 @@ describe('OAuth._prepareSecureRequest', () => {
     it('should pass through post_body if buffer and no content-type specified', () => {
         // Should probably actually set application/octet-stream, but to avoid a change in behaviour
         // will just document (here) that the library will set it to application/x-www-form-urlencoded
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]));
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]), null);
         expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
         expect(preparedRequest.post_body.length).toBe(4);
     });
     it('should url encode and auto set content type if post_body is not a string or buffer', () => {
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, {foo:'1,2,3', bar:'1+2'});
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, {foo:'1,2,3', bar:'1+2'}, null);
         expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
         expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
     });
@@ -202,12 +202,12 @@ describe('OAuth._prepareSecureRequest', () => {
         const testStringLength = testString.length;
         const testStringBytesLength = Buffer.byteLength(testString);
         expect(testStringLength === testStringBytesLength).toBeFalsy();
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, testString);
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, testString, null);
         expect(preparedRequest.options.headers['Content-Length']).toBe(testStringBytesLength);
         expect(preparedRequest.post_body).toBe(testString);
     });
     it('should take a string with no post_content_type specified as is', () => {
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, 'foo=1%2C2%2C3&bar=1%2B2');
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, 'foo=1%2C2%2C3&bar=1%2B2', null);
         expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
         expect(preparedRequest.options.headers['Content-Length']).toBe(23);
         expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
@@ -219,7 +219,7 @@ describe('OAuth._prepareSecureRequest', () => {
         expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
     });
     it('should prepare a GET request', () => {
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'GET', 'http://foo.com/blah');
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'GET', 'http://foo.com/blah', null, null, null);
         expect(preparedRequest.options.method).toBe('GET');
     });
     it('should prepare a POST request', () => {
@@ -231,7 +231,7 @@ describe('OAuth._prepareSecureRequest', () => {
         expect(preparedRequest.options.method).toBe('PUT');
     });
     it('should prepare a DELETE request', () => {
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'DELETE', 'http://foo.com/blah');
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'DELETE', 'http://foo.com/blah', null, null, null);
         expect(preparedRequest.options.method).toBe('DELETE');
     });
 });

@@ -54,7 +54,6 @@ class OAuth {
      * @param {string} parameters
      * @param {string} tokenSecret
      * @returns {string}
-     * @private
      */
     _getSignature(method, url, parameters, tokenSecret) {
         const signatureBase = OAuthUtils.createSignatureBase(method, url, parameters);
@@ -87,7 +86,6 @@ class OAuth {
      * @param {string} signatureBase
      * @param {string} tokenSecret
      * @returns {string}
-     * @private
      */
     _createSignature(signatureBase, tokenSecret) {
         tokenSecret = tokenSecret ? OAuthUtils.encodeData(tokenSecret) : '';
@@ -135,7 +133,6 @@ class OAuth {
      * @param {string} url
      * @param {object} extra_params
      * @returns {array}
-     * @private
      */
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
         const oauthParameters = {
@@ -188,10 +185,9 @@ class OAuth {
      * @param {string} method
      * @param {string} url
      * @param {object|null} extra_params
-     * @param {(string|buffer|null)} post_body
+     * @param {(string|buffer|object|null)} post_body
      * @param {(string|null)} post_content_type
      * @returns {{object, object, (string|null)}}
-     * @private
      */
     _prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
