@@ -218,7 +218,6 @@ describe('OAuth._prepareSecureRequest', () => {
         expect(preparedRequest.options.headers['Content-Length']).toBe(23);
         expect(preparedRequest.post_body).toBe('foo=1%2C2%2C3&bar=1%2B2');
     });
-
     it('should prepare a GET request', () => {
         const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'GET', 'http://foo.com/blah');
         expect(preparedRequest.options.method).toBe('GET');
@@ -231,22 +230,111 @@ describe('OAuth._prepareSecureRequest', () => {
         const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'PUT', 'http://foo.com/blah', null, 'foo', 'text/plain');
         expect(preparedRequest.options.method).toBe('PUT');
     });
-
     it('should prepare a DELETE request', () => {
         const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'DELETE', 'http://foo.com/blah');
         expect(preparedRequest.options.method).toBe('DELETE');
     });
 });
+
+const oauth = new OAuth(
+    'http://foo.com/RequestToken',
+    'http://foo.com/AccessToken',
+    'anonymous',
+    'anonymous',
+    '1.0A',
+    'http://foo.com/callback',
+    'HMAC-SHA1'
+);
+// Test each api for various response codes (200-210, 300 redirects, 400, 500), when location header is specified, when followRedirect is true/false
+describe('OAuth.get', () => {
+    it('should perform a GET request', async () => {
+        const expectedData = {
+            data: {
+                id: 2,
+                email: 'janet.weaver@reqres.in',
+                first_name: 'Janet',
+                last_name: 'Weaver',
+                avatar: 'https://reqres.in/img/faces/2-image.jpg'
+            },
+            support: {
+                url: 'https://reqres.in/#support-heading',
+                text: 'To keep ReqRes free, contributions towards server costs are appreciated!'
+            }
+        };
+        try {
+            const {error, data, response} = await oauth.get('https://reqres.in/api/users/2', 'oauth_token', 'oauth_secret');
+            expect(error).toBeUndefined();
+            expect(JSON.parse(data)).toEqual(expectedData);
+            expect(response).toBeDefined();
+        }
+        catch(e) {
+            console.error(e);
+        }
+    });
+    it('should return the status code as error on a 404', async () => {
+        try {
+            const { error } = await oauth.get('https://reqres.in/api/users/23', 'oauth_token', 'oauth_secret');
+            expect(error).toBe(404);
+        }
+        catch (e) {
+            console.error(e);
+        }
+    });
+});
 describe('OAuth.post', () => {
-    const oauth = new OAuth(
-        'http://foo.com/RequestToken',
-        'http://foo.com/AccessToken',
-        'anonymous',
-        'anonymous',
-        '1.0A',
-        'http://foo.com/callback',
-        'HMAC-SHA1'
-    );
+    it('should perform a POST request', async () => {
+        const post_data = {
+            name: 'morpheus',
+            job: 'leader'
+        };
+        try {
+            const {error, data, response} = await oauth.post('https://reqres.in/api/users/2', 'oauth_token', 'oauth_secret', post_data);
+            expect(error).toBeUndefined();
+            const parsedData = JSON.parse(data);
+            expect(response.statusCode).toBe(201);
+            expect(parsedData.name).toBe(post_data.name);
+            expect(parsedData.job).toBe(post_data.job);
+        }
+        catch(e) {
+            console.error(e);
+        }
+    })
+});
+describe('OAuth.put', () => {
+    it('should perform a PUT request', async () => {
+        const put = {
+            name: 'morpheus',
+            job: 'zion resident'
+        };
+        try {
+            const {error, data, response} = await oauth.put('https://reqres.in/api/users/2', 'oauth_token', 'oauth_secret', put);
+            expect(error).toBeUndefined();
+            const parsedData = JSON.parse(data);
+            expect(response.statusCode).toBe(200);
+            expect(parsedData.name).toBe(put.name);
+            expect(parsedData.job).toBe(put.job);
+        }
+        catch (e) {
+            console.error(e);
+        }
+    });
+    const options = {
+        hostname: 'reqres.in',
+        port: 443,
+        path: '/api/users/2',
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': putData.length
+        }
+    };
+});
+describe('OAuth.delete', () => {
+    it('should perform a DELETE request', async () => {
+        const {data, response} = await oauth.delete('https://reqres.in/api/users/2', 'oauth_token', 'oauth_secret');
+        expect(response.statusCode).toBe(204);
+        expect(data).toBe('');
+    });
 });
     'When performing a secure' : {
         'Request With a Callback' : {

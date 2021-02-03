@@ -268,13 +268,8 @@ describe('executeRequest', () => {
             path: '/api/users/23',
             method: 'GET',
         };
-        try {
-            await OAuthUtils.executeRequest(https, options);
-        }
-        catch(error) {
-            const { statusCode } = error;
-            expect(statusCode).toBe(404);
-        }
+        const {error} = await OAuthUtils.executeRequest(https, options);
+        expect(error).toBe(404);
     });
     it('should successfully send a POST request', async () => {
         const post = {

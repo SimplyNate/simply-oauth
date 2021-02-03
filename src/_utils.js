@@ -245,7 +245,7 @@ module.exports.executeRequest = function (http_library, options, post_body=null)
          */
         const responseHandler = (response, data) => {
             if (!(this.responseIsOkay(response)) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
-                return reject({statusCode: response.statusCode, data, response});
+                return resolve({error: response.statusCode, data, response});
             }
             return resolve({data, response});
 

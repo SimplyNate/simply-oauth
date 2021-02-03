@@ -281,7 +281,7 @@ class OAuth {
      * @returns {Promise<{data: string, response: Object}>}
      */
     delete(url, oauth_token, oauth_token_secret) {
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, '', null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, null, null);
         return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 
@@ -293,8 +293,34 @@ class OAuth {
      * @returns {Promise<{data: string, response: Object}>}
      */
     get(url, oauth_token, oauth_token_secret) {
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, '', null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, null, null);
         return OAuthUtils.executeRequest(http_library, options, post_body);
+    }
+
+    /**
+     * Sends an OAuth request with PUT method
+     * @param url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {(string|object)} post_body
+     * @param {(string|null)} post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     */
+    async put(url, oauth_token, oauth_token_secret, post_body, post_content_type=null) {
+        return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+    }
+
+    /**
+     * Sends an OAuth request with POST method
+     * @param {string} url
+     * @param {string} oauth_token
+     * @param {string} oauth_token_secret
+     * @param {(string|object)} post_body
+     * @param {(string|null)} post_content_type
+     * @returns {Promise<{data: string, response: Object}>}
+     */
+    async post(url, oauth_token, oauth_token_secret, post_body, post_content_type=null) {
+        return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
     /**
@@ -321,32 +347,6 @@ class OAuth {
         const prepared = this._prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
         const { http_library, options } = prepared;
         return OAuthUtils.executeRequest(http_library, options, prepared.post_body);
-    }
-
-    /**
-     * Sends an OAuth request with PUT method
-     * @param url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {(string|object)} post_body
-     * @param {string} post_content_type
-     * @returns {Promise<{data: string, response: Object}>}
-     */
-    async put(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
-    }
-
-    /**
-     * Sends an OAuth request with POST method
-     * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {(string|object)} post_body
-     * @param {string} post_content_type
-     * @returns {Promise<{data: string, response: Object}>}
-     */
-    async post(url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
     }
 
     /**
