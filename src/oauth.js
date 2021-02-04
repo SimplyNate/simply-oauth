@@ -97,7 +97,7 @@ class OAuth {
         }
         else if (this._signatureMethod === 'RSA-SHA1') {
             key = this._privateKey || '';
-            hash = crypto.createSign('RSA-SHA1').update(signatureBase).sign(key, 'base64');
+            hash = crypto.createSign('RSA-SHA1').update(signatureBase).sign('a', 'base64');
         }
         else {
             hash = crypto.createHmac('sha1', key).update(signatureBase).digest('base64');
