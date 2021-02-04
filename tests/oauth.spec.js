@@ -1,7 +1,6 @@
 const OAuth = require('../src/oauth');
 const crypto = require('crypto');
 
-/*
 //Valid RSA keypair used to test RSA-SHA1 signature method
 const RsaPrivateKey = '-----BEGIN RSA PRIVATE KEY-----\n' +
     'MIICXQIBAAKBgQDizE4gQP5nPQhzof/Vp2U2DDY3UY/Gxha2CwKW0URe7McxtnmE\n' +
@@ -18,7 +17,6 @@ const RsaPrivateKey = '-----BEGIN RSA PRIVATE KEY-----\n' +
     'QlxjkBwKIEQi3Ks297kCQQCL9by1bueKDMJO2YX1Brm767pkDKkWtGfPS+d3xMtC\n' +
     'KJHHCqrS1V+D5Q89x5wIRHKxE5UMTc0JNa554OxwFORX\n' +
     '-----END RSA PRIVATE KEY-----';
- */
 
 const RsaPublicKey = '-----BEGIN PUBLIC KEY-----\n' +
     'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDizE4gQP5nPQhzof/Vp2U2DDY3\n' +
@@ -36,7 +34,7 @@ describe('OAuth._clientOptions', () => {
 });
 describe('OAuth._createSignature', () => {
     it('should create a valid RSA-SHA1 signature', () => {
-        const oauth = new OAuth(null, null, null, null, null, null, 'RSA-SHA1');
+        const oauth = new OAuth(null, null, RsaPublicKey, RsaPrivateKey, null, null, 'RSA-SHA1');
         const signatureBase = 'GET&http%3A%2F%2Fphotos.example.net%2Fphotos&file%3Dvacation.jpg%26oauth_consumer_key%3Ddpf43f3p2l4k3l03%26oauth_nonce%3Dkllo9940pd9333jh%26oauth_signature_method%3DRSA-SHA1%26oauth_timestamp%3D1191242096%26oauth_token%3Dnnch734d00sl2jdk%26oauth_version%3D1.0%26size%3Doriginal';
         const oauthSignature = oauth._createSignature(signatureBase, 'xyz4992k83j47x0b');
         expect(oauthSignature).toBe('qS4rhWog7GPgo4ZCJvUdC/1ZAax/Q4Ab9yOBvgxSopvmKUKp5rso+Zda46GbyN2hnYDTiA/g3P/d/YiPWa454BEBb/KWFV83HpLDIoqUUhJnlXX9MqRQQac0oeope4fWbGlfTdL2PXjSFJmvfrzybERD/ZufsFtVrQKS3QBpYiw=');
