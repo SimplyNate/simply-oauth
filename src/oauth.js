@@ -156,9 +156,11 @@ class OAuth {
                 }
             }
             const parsedUrl = new URL(url);
-            if (parsedUrl.query) {
+            if (parsedUrl.search) {
                 let key2;
-                const extraParameters = querystring.parse(parsedUrl.query);
+                // Remove the ? character from the search string
+                const search = (parsedUrl.search).replace('?', '');
+                const extraParameters = querystring.parse(search);
                 for (const key of Object.keys(extraParameters)) {
                     const value = extraParameters[key];
                     if (typeof value === 'object'){
