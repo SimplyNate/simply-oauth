@@ -210,7 +210,7 @@ vows.describe('OAuth2').addBatch({
                         }
                     };
                 }
-                oa._request("POST", "", {"Content-Type":"application/octet-stream"}, new Buffer([1,2,3,4]));
+                oa._request("POST", "", {"Content-Type":"application/octet-stream"}, Buffer.from([1,2,3,4]));
                 assert.ok( bodyWritten );
             }
         },
@@ -258,7 +258,7 @@ vows.describe('OAuth2').addBatch({
                         }
                     };
                 }
-                oa._request("PUT", "", {"Content-Type":"application/octet-stream"}, new Buffer([1,2,3,4]));
+                oa._request("PUT", "", {"Content-Type":"application/octet-stream"}, Buffer.from([1,2,3,4]));
                 assert.ok( bodyWritten );
             }
         }

@@ -95,16 +95,12 @@ describe('OAuth.setClientOptions', () => {
     });
 });
 describe('OAuth.getOAuthRequestToken', () => {
-    it('should use the HTTP method in the client options', () => {
-    });
-    it('should use a POST by default', () => {
-    });
+    it('should use the HTTP method in the client options');
+    it('should use a POST by default');
 });
 describe('OAuth.getOAuthAccessToken', () => {
-    it('should use the HTTP method in the client options', () => {
-    });
-    it('should use a POST by default', () => {
-    });
+    it('should use the HTTP method in the client options');
+    it('should use a POST by default');
 });
 describe('OAuth.authHeader', () => {
     const OAuthUtils = require('../src/_utils');
@@ -173,14 +169,14 @@ describe('OAuth._prepareSecureRequest', () => {
         'HMAC-SHA1'
     );
     it('should pass through post_body as is if it is a buffer', () => {
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]), 'image/jpeg');
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, Buffer.from([10,20,30,40]), 'image/jpeg');
         expect(preparedRequest.options.headers['Content-Type']).toBe('image/jpeg');
         expect(preparedRequest.post_body.length).toBe(4);
     });
     it('should pass through post_body if buffer and no content-type specified', () => {
         // Should probably actually set application/octet-stream, but to avoid a change in behaviour
         // will just document (here) that the library will set it to application/x-www-form-urlencoded
-        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, new Buffer([10,20,30,40]), null);
+        const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, Buffer.from([10,20,30,40]), null);
         expect(preparedRequest.options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
         expect(preparedRequest.post_body.length).toBe(4);
     });

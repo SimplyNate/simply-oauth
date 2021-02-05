@@ -197,7 +197,7 @@ class OAuth {
             post_content_type = 'application/x-www-form-urlencoded';
         }
         const parsedUrl = new URL(url);
-        parsedUrl.port = !parsedUrl ? (parsedUrl.protocol === 'http:' ? '80' : '443') : parsedUrl.port;
+        parsedUrl.port = parsedUrl.port === '' ? (parsedUrl.protocol === 'http:' ? '80' : '443') : parsedUrl.port;
         const headers = {};
         const authorization = this._buildAuthorizationHeaders(orderedParameters);
         if (this._isEcho) {
@@ -229,13 +229,21 @@ class OAuth {
         }
         if (post_body) {
             if (Buffer.isBuffer(post_body)) {
-                headers['Content-length'] = post_body.length;
+                headers['Content-Length'] = post_body.length;
             }
             else {
-                headers['Content-length'] = Buffer.byteLength(post_body);
+                if (typeof post_body === 'object') {
+                    post_body = querystring.stringify(post_body)
+                        .replace(/!/g, '%21')
+                        .replace(/'/g, '%27')
+                        .replace(/\(/g, '%28')
+                        .replace(/\)/g, '%29')
+                        .replace(/\*/g, '%2A');
+                }
+                headers['Content-Length'] = Buffer.byteLength(post_body);
             }
         } else {
-            headers['Content-length'] = 0;
+            headers['Content-Length'] = 0;
         }
         headers['Content-Type'] = post_content_type;
         let path;
