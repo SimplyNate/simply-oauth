@@ -258,6 +258,12 @@ class OAuth {
      * @param {object} options
      */
     setClientOptions(options) {
+        const merged = { ...this._defaultClientOptions };
+        for (const key of Object.keys(options)) {
+            merged[key] = options[key];
+        }
+        this._clientOptions = merged;
+        /*
         let key;
         const mergedOptions = {}
         const { hasOwnProperty } = Object.prototype;
@@ -269,6 +275,7 @@ class OAuth {
             }
         }
         this._clientOptions = mergedOptions;
+         */
     }
 
     /**
@@ -379,8 +386,8 @@ class OAuth {
         const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
         const { data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
-        const {oauth_token} = results;
-        const {oauth_token_secret} = results;
+        const { oauth_token } = results;
+        const { oauth_token_secret } = results;
         delete results.oauth_token;
         delete results.oauth_token_secret;
         return { oauth_token, oauth_token_secret, results, response };
@@ -418,7 +425,7 @@ class OAuth {
     signUrl(url, oauth_token=null, oauth_token_secret=null, method=null) {
         method = method ? method : 'GET';
         const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
-        const parsedUrl = URL.parse(url, false);
+        const parsedUrl = new URL(url);
         let query = '';
         for (let i = 0; i < orderedParameters.length; i++) {
             query += `${orderedParameters[i][0]}=${OAuthUtils.encodeData(orderedParameters[i][1])}&`;

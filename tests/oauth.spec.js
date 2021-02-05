@@ -69,7 +69,7 @@ describe('OAuth.signUrl', () => {
     const OAuthUtils = require('../src/_utils');
     OAuthUtils.getTimestamp = function() { return 1272399856 };
     OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
-    const oauth = new OAuth('null', 'null', 'consumerkey', 'consumersecret', '1.0', null, 'HMAC-SHA1');
+    const oauth = new OAuth(null, null, 'consumerkey', 'consumersecret', '1.0', null, 'HMAC-SHA1');
     it('should provide a valid signature when no token is present', () => {
         expect(oauth.signUrl('http://somehost.com:3323/foo/poop?bar=foo')).toBe('http://somehost.com:3323/foo/poop?bar=foo&oauth_consumer_key=consumerkey&oauth_nonce=ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1272399856&oauth_version=1.0&oauth_signature=7ytO8vPSLut2GzHjU9pn1SV9xjc%3D');
     });
@@ -80,38 +80,30 @@ describe('OAuth.signUrl', () => {
         expect(oauth.signUrl('http://somehost.com:3323/foo/poop?bar=foo', 'token', 'tokensecret')).toBe('http://somehost.com:3323/foo/poop?bar=foo&oauth_consumer_key=consumerkey&oauth_nonce=ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1272399856&oauth_token=token&oauth_version=1.0&oauth_signature=zeOR0Wsm6EG6XSg0Vw%2FsbpoSib8%3D');
     });
 });
-describe('OAuth.getOAuthRequestToken', () => {
-    const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
-    oauth._performSecureRequest = function() { return this.requestArguments = arguments; };
-    const OAuthUtils = require('../src/_utils');
-    OAuthUtils.getTimestamp = function() { return 1272399856; };
-    OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
-    it('should use the HTTP method in the client options', () => {
+describe('OAuth.setClientOptions', () => {
+    it('should override the default requestTokenHttpMethod', () => {
+        const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
+        expect(oauth._clientOptions.requestTokenHttpMethod).toBe('POST');
         oauth.setClientOptions({ requestTokenHttpMethod: 'GET' });
-        oauth.getOAuthRequestToken({});
-        expect(oauth.requestArguments[2]).toBe('GET');
+        expect(oauth._clientOptions.requestTokenHttpMethod).toBe('GET');
+    });
+    it('should override the default accessTokenHttpMethod', () => {
+        const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
+        expect(oauth._clientOptions.accessTokenHttpMethod).toBe('POST');
+        oauth.setClientOptions({ accessTokenHttpMethod: 'GET' });
+        expect(oauth._clientOptions.accessTokenHttpMethod).toBe('GET');
+    });
+});
+describe('OAuth.getOAuthRequestToken', () => {
+    it('should use the HTTP method in the client options', () => {
     });
     it('should use a POST by default', () => {
-        oauth.setClientOptions({});
-        oauth.getOAuthRequestToken({});
-        expect(oauth.requestArguments[2]).toBe('POST');
     });
 });
 describe('OAuth.getOAuthAccessToken', () => {
-    const OAuthUtils = require('../src/_utils');
-    OAuthUtils.getTimestamp = function() { return 1272399856; };
-    OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
-    const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
-    oauth._performSecureRequest = function() { return this.requestArguments = arguments; };
     it('should use the HTTP method in the client options', () => {
-        oauth.setClientOptions({ accessTokenHttpMethod: 'GET' });
-        oauth.getOAuthAccessToken('', '', '');
-        expect(oauth.requestArguments[2]).toBe('GET');
     });
     it('should use a POST by default', () => {
-        oauth.setClientOptions({});
-        oauth.getOAuthAccessToken('', '', '');
-        expect(oauth.requestArguments[2]).toBe('POST');
     });
 });
 describe('OAuth.authHeader', () => {
