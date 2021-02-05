@@ -224,17 +224,17 @@ describe('OAuth._prepareSecureRequest', () => {
     });
 });
 
-const oauth = new OAuth(
-    'http://foo.com/RequestToken',
-    'http://foo.com/AccessToken',
-    'anonymous',
-    'anonymous',
-    '1.0A',
-    'http://foo.com/callback',
-    'HMAC-SHA1'
-);
 // Test each api for various response codes (200-210, 300 redirects, 400, 500), when location header is specified, when followRedirect is true/false
 describe('OAuth.get', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
     it('should perform a GET request', async () => {
         const expectedData = {
             data: {
@@ -270,6 +270,15 @@ describe('OAuth.get', () => {
     });
 });
 describe('OAuth.post', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
     it('should perform a POST request', async () => {
         const post_data = {
             name: 'morpheus',
@@ -289,6 +298,15 @@ describe('OAuth.post', () => {
     })
 });
 describe('OAuth.put', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
     it('should perform a PUT request', async () => {
         const put = {
             name: 'morpheus',
@@ -308,6 +326,15 @@ describe('OAuth.put', () => {
     });
 });
 describe('OAuth.delete', () => {
+    const oauth = new OAuth(
+        'http://foo.com/RequestToken',
+        'http://foo.com/AccessToken',
+        'anonymous',
+        'anonymous',
+        '1.0A',
+        'http://foo.com/callback',
+        'HMAC-SHA1'
+    );
     it('should perform a DELETE request', async () => {
         const {data, response} = await oauth.delete('https://reqres.in/api/users/2', 'oauth_token', 'oauth_secret');
         expect(response.statusCode).toBe(204);
