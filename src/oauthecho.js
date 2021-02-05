@@ -1,4 +1,4 @@
-const OAuth = require('oauth');
+const OAuth = require('./oauth');
 
 class OAuthEcho extends OAuth {
 

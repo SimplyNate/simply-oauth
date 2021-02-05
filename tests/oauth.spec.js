@@ -94,14 +94,12 @@ describe('OAuth.setClientOptions', () => {
         expect(oauth._clientOptions.accessTokenHttpMethod).toBe('GET');
     });
 });
+/*
 describe('OAuth.getOAuthRequestToken', () => {
-    it('should use the HTTP method in the client options');
-    it('should use a POST by default');
 });
 describe('OAuth.getOAuthAccessToken', () => {
-    it('should use the HTTP method in the client options');
-    it('should use a POST by default');
 });
+ */
 describe('OAuth.authHeader', () => {
     const OAuthUtils = require('../src/_utils');
     OAuthUtils.getTimestamp = function() { return 1272399856 };

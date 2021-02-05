@@ -380,25 +380,22 @@ class OAuth {
      *
      * N.B. This method will HTTP POST verbs by default, if you wish to override this behaviour you will
      * need to provide a requestTokenHttpMethod option when creating the client.
-     * @param {(function|object)} extraParams
+     * @param {object} extraParams
      * @returns {Promise<{oauth_token: string | string[], response: Object, oauth_token_secret: string | string[], results: ParsedUrlQuery}>}
      */
-    async getOAuthRequestToken(extraParams) {
-        if (typeof extraParams === 'function'){
-            extraParams = {};
-        }
+    async getOAuthRequestToken(extraParams={}) {
         // Callbacks are 1.0A related
         if (this._authorize_callback) {
             extraParams.oauth_callback = this._authorize_callback;
         }
         const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
-        const { data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
+        const { error, data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const { oauth_token } = results;
         const { oauth_token_secret } = results;
         delete results.oauth_token;
         delete results.oauth_token_secret;
-        return { oauth_token, oauth_token_secret, results, response };
+        return { error, oauth_token, oauth_token_secret, results, response };
     }
 
     /**
@@ -413,13 +410,13 @@ class OAuth {
             oauth_verifier,
         };
         const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
-        const { data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
+        const { error, data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const oauth_access_token = results.oauth_token;
         delete results.oauth_token;
         const oauth_access_token_secret = results.oauth_token_secret;
         delete results.oauth_token_secret;
-        return { oauth_access_token, oauth_access_token_secret, results, response };
+        return { error, oauth_access_token, oauth_access_token_secret, results, response };
     }
 
     /**

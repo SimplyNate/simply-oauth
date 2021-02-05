@@ -7,7 +7,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "jest ./tests"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
