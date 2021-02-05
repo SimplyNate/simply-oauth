@@ -1,12 +1,7 @@
-var vows = require('vows'),
-    assert = require('assert'),
-    DummyResponse= require('./util').DummyResponse,
-    DummyRequest= require('./util').DummyRequest,
-    https = require('https'),
-    OAuth2= require('../lib/oauth2').OAuth2,
-    url = require('url');
+const OAuth2 = require('../src/oauth2');
+const url = require('url');
 
-vows.describe('OAuth2').addBatch({
+describe('OAuth2').addBatch({
     'Given an OAuth2 instance with clientId and clientSecret, ': {
         topic: new OAuth2("clientId", "clientSecret"),
         'When dealing with the response from the OP': {

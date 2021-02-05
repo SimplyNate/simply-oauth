@@ -90,10 +90,10 @@ class OAuth2 {
      * @param {object} headers
      * @param {*} post_body
      * @param {string|null} access_token
-     * @returns {Promise<{data: string, response: Object}>}
+     * @returns {{object, object, (string|null)}}
      * @private
      */
-    _request(method, url, headers, post_body=null, access_token=null) {
+    _prepareRequest(method, url, headers, post_body=null, access_token=null) {
         const parsedUrl = new URL(url);
         if (parsedUrl.protocol === 'https:' && !parsedUrl.port) {
             parsedUrl.port = '443';
@@ -140,7 +140,7 @@ class OAuth2 {
         if (this._agent) {
             options.agent = this._agent;
         }
-        return OAuthUtils.executeRequest(http_library, options, post_body);
+        return { http_library, options, post_body };
     }
 
     /**
@@ -170,7 +170,8 @@ class OAuth2 {
         const post_headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         };
-        const { data, response } = await this._request('POST', this._getAccessTokenUrl(), post_headers, post_data);
+        const { http_library, options, post_body } = this._prepareRequest('POST', this._getAccessTokenUrl(), post_headers, post_data);
+        const { error, data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
         let results;
         try {
             // As of http://tools.ietf.org/html/draft-ietf-oauth-v2-07
@@ -187,19 +188,8 @@ class OAuth2 {
         const { access_token } = results;
         const { refresh_token } = results;
         delete results.refresh_token;
-        return { access_token, refresh_token, results, response }; // callback results =-=
+        return { error, access_token, refresh_token, results, response }; // callback results =-=
 
-    }
-
-    /**
-     * Gets a protected resource. Deprecated
-     * @param {string} url
-     * @param {string} access_token
-     * @returns {Promise<{data: string, response: Object}>}
-     * @deprecated
-     */
-    getProtectedResource(url, access_token) {
-        return this._request('GET', url, {}, '', access_token);
     }
 
     /**
@@ -214,7 +204,8 @@ class OAuth2 {
             headers.Authorization = this.buildAuthHeader(access_token);
             access_token = null;
         }
-        return this._request('GET', url, headers, '', access_token);
+        const { http_library, options, post_body } = this._prepareRequest('GET', url, headers, '', access_token);
+        return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 }
 
