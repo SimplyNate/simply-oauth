@@ -166,6 +166,27 @@ describe('OAuth._prepareSecureRequest', () => {
         'http://foo.com/callback',
         'HMAC-SHA1'
     );
+    it('should prepare the OAuth headers correctly', () => {
+        const { options } = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, Buffer.from([10,20,30,40]), 'image/jpeg');
+        const { headers } = options;
+        const [authorization_start, authorization] = headers.Authorization.split(' ');
+        expect(authorization_start).toBe('OAuth');
+        const parsedAuthorization = {
+            oauth_signature: undefined  // Prevents WebStorm from throwing a warning
+        };
+        const parts = authorization.split(',');
+        for (const part of parts) {
+            const [key, value] = part.split('=');
+            parsedAuthorization[key] = value.replace('"', '').replace('"', '');
+        }
+        expect(parsedAuthorization.oauth_consumer_key).toBe('anonymous');
+        expect(parsedAuthorization.oauth_nonce.length).toBe(32);
+        expect(parsedAuthorization.oauth_signature_method).toBe('HMAC-SHA1');
+        expect(parsedAuthorization.oauth_timestamp).toBeDefined();
+        expect(parsedAuthorization.oauth_token).toBe('token');
+        expect(parsedAuthorization.oauth_version).toBe('1.0A');
+        expect(parsedAuthorization.oauth_signature).toBe('JW3merf6ooBTgGmaHbDlpNPK9sY%3D');
+    });
     it('should pass through post_body as is if it is a buffer', () => {
         const preparedRequest = oauth._prepareSecureRequest('token', 'token_secret', 'POST', 'http://foo.com/blah',null, Buffer.from([10,20,30,40]), 'image/jpeg');
         expect(preparedRequest.options.headers['Content-Type']).toBe('image/jpeg');
