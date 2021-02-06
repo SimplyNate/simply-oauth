@@ -12,7 +12,7 @@ class OAuth {
      * @param {string|null} consumerKey
      * @param {string|null} consumerSecret
      * @param {string|null} version
-     * @param {string} authorize_callback
+     * @param {string|null} authorize_callback
      * @param {string|null} signatureMethod
      * @param {number} nonceSize
      * @param {object|null} customHeaders
