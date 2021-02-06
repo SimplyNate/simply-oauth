@@ -197,7 +197,6 @@ class OAuth {
             post_content_type = 'application/x-www-form-urlencoded';
         }
         const parsedUrl = new URL(url);
-        parsedUrl.port = parsedUrl.port === '' ? (parsedUrl.protocol === 'http:' ? '80' : '443') : parsedUrl.port;
         const headers = {};
         const authorization = this._buildAuthorizationHeaders(orderedParameters);
         if (this._isEcho) {
@@ -250,8 +249,8 @@ class OAuth {
         if (!parsedUrl.pathname || parsedUrl.pathname === '') {
             parsedUrl.pathname = '/';
         }
-        if (parsedUrl.query) {
-            path = `${parsedUrl.pathname}?${parsedUrl.query}`;
+        if (parsedUrl.search) {
+            path = `${parsedUrl.pathname}${parsedUrl.search}`;
         }
         else {
             path = parsedUrl.pathname;
