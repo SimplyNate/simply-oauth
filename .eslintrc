@@ -5,8 +5,8 @@
         "jest": true
     },
     "parserOptions": {
-        "ecmaVersion": 2020,
-        "sourceType": "script"
+        "ecmaVersion": "latest",
+        "sourceType": "module"
     },
     "extends": "eslint:recommended",
     "globals": {

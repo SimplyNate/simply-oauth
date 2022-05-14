@@ -21,6 +21,7 @@
     "author": "Simply Nate",
     "license": "MIT",
     "devDependencies": {
-        "eslint": "^8.15.0"
+        "eslint": "^8.15.0",
+        "typescript": "^4.6.4"
     }
 }
