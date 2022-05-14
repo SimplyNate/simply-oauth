@@ -1,27 +1,26 @@
 {
-  "name": "simply-oauth",
-  "version": "1.0.1",
-  "description": "Fork of node-oauth for interacting with OAuth 1.0, 1.0A, 2 and Echo. Updated to use Async functions rather than callbacks",
-  "directories": {
-    "lib": "./src"
-  },
-  "main": "index.js",
-  "scripts": {
-    "test": "jest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SimplyNate/simply-oauth.git"
-  },
-  "keywords": [
-    "oauth",
-    "oauth1.0a",
-    "oauth2"
-  ],
-  "author": "Simply Nate",
-  "license": "MIT",
-  "devDependencies": {
-    "eslint": "^7.17.0",
-    "jest": "^26.6.3"
-  }
+    "name": "simply-oauth",
+    "version": "1.0.1",
+    "description": "Fork of node-oauth for interacting with OAuth 1.0, 1.0A, 2 and Echo. Updated to use Async functions rather than callbacks",
+    "directories": {
+        "lib": "./src"
+    },
+    "main": "index.js",
+    "scripts": {
+        "test": "jest"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/SimplyNate/simply-oauth.git"
+    },
+    "keywords": [
+        "oauth",
+        "oauth1.0a",
+        "oauth2"
+    ],
+    "author": "Simply Nate",
+    "license": "MIT",
+    "devDependencies": {
+        "eslint": "^8.15.0"
+    }
 }
