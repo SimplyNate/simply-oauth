@@ -2,7 +2,7 @@
     "env": {
         "node": true,
         "es6": true,
-        "jest": true
+        "jest": true,
     },
     "parserOptions": {
         "ecmaVersion": "latest",
@@ -12,6 +12,7 @@
     "globals": {
         "Atomics": "readonly"
     },
+    "parser": "@typescript-eslint/parser",
     "rules": {
         "eqeqeq": "error",
         "quotes": ["error", "single"],
