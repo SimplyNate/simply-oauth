@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const querystring = require('querystring');
-const OAuthUtils = require('./_utils');
+const OAuthUtils = require('./utils');
 
 
 class OAuth {

@@ -1,3 +1,15 @@
-module.exports.OAuth = require('./src/oauth');
-module.exports.OAuthEcho = require('./src/oauthecho');
-module.exports.OAuth2 = require('./src/oauth2');
+import Oauth from './src/oauth';
+import OAuthEcho from './src/oauthecho';
+import OAuth2 from './src/oauth2';
+
+export default {
+    Oauth,
+    OAuthEcho,
+    OAuth2,
+};
+export {
+    Oauth,
+    OAuthEcho,
+    OAuth2,
+};
+

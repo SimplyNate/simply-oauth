@@ -1,5 +1,5 @@
 const https = require('https');
-const OAuthUtils = require('../src/_utils');
+const OAuthUtils = require('../src/utils');
 
 describe('isAnEarlyCloseHost', () => {
     it('should return true if google.com or googleapis.com appears', () => {

@@ -1,40 +1,36 @@
-const http = require('http');
-const https = require('https');
+import * as http from 'node:http';
+import * as https from 'node:https';
+
+interface GenericObject {
+    [index: string]: any,
+}
 
 /**
  * Returns true if this is a host that closes *before* it ends
- * @param {string} hostName
- * @returns {boolean}
  */
-module.exports.isAnEarlyCloseHost = function (hostName) {
+export function isAnEarlyCloseHost(hostName: string): boolean {
     return hostName && (hostName.match(/.*google(apis)?.com$/))?.length > 0;
-};
+}
 
 /**
  * Adds all the key/value pairs of the 'from' object to the 'to' object
- * @param {object} from
- * @param {object} to
  */
-module.exports.combineObjects = function (from, to) {
-    let i = 0;
-    const keys = Object.keys(from);
-    const len = keys.length;
-    for (i; i < len; i++) {
-        to[keys[i]] = from[keys[i]];
-    }
-};
+export function combineObjects(from: GenericObject, to: GenericObject): GenericObject {
+    return {
+        ...to,
+        ...from,
+    };
+}
 
 /**
  * Encode special characters
- * @param {(string|null)} toEncode
- * @returns {string}
  */
-module.exports.encodeData = function (toEncode) {
+export function encodeData(toEncode?: string): string {
     if (toEncode === null || toEncode === '') {
         return '';
     }
     const result = encodeURIComponent(toEncode);
-    // Fix the mismatch between OAuth's RFC3986's and Javascript's beliefs in what is right and wrong ;)
+    // Fix the mismatch between OAuth RFC3986 and Javascript
     return result.replace(/!/g, '%21')
         .replace(/'/g, '%27')
         .replace(/\(/g, '%28')
@@ -44,11 +40,9 @@ module.exports.encodeData = function (toEncode) {
 
 /**
  * Decode special characters
- * @param {(string|null)} toDecode
- * @returns {string}
  */
-module.exports.decodeData = function (toDecode) {
-    if (toDecode !== null) {
+export function decodeData(toDecode?: string): string {
+    if (toDecode) {
         toDecode = toDecode.replace(/\+/g, ' ');
     }
     return decodeURIComponent(toDecode);
@@ -56,10 +50,8 @@ module.exports.decodeData = function (toDecode) {
 
 /**
  * Returns a normalized URL using parsed URL components
- * @param {string} url
- * @returns {string}
  */
-module.exports.normalizeUrl = function (url) {
+export function normalizeUrl(url: string): string {
     const parsedUrl = new URL(url);
     let port = '';
     if (parsedUrl.port) {
@@ -76,12 +68,8 @@ module.exports.normalizeUrl = function (url) {
 
 /**
  * Creates a string signature base
- * @param {string} method
- * @param {string} url
- * @param {string} parameters
- * @returns {string}
  */
-module.exports.createSignatureBase = function (method, url, parameters) {
+export function createSignatureBase(method: string, url: string, parameters: string): string {
     url = this.encodeData(this.normalizeUrl(url));
     parameters = this.encodeData(parameters);
     return `${method.toUpperCase()}&${url}&${parameters}`;
@@ -89,21 +77,16 @@ module.exports.createSignatureBase = function (method, url, parameters) {
 
 /**
  * Determines whether a parameter is considered an OAuth parameter
- * @param {string} parameter
- * @returns {boolean}
  */
-module.exports.isParameterNameAnOAuthParameter = function (parameter) {
+export function isParameterNameAnOAuthParameter(parameter: string): boolean {
     const m = parameter.match('^oauth_');
     return !!(m && (m[0] === 'oauth_'));
 }
 
 /**
- * Takes an object literal that represents the arguments, and returns an array
- * of argument/value pairs.
- * @param {object} argumentsHash
- * @returns {[]}
+ * Takes an object literal that represents the arguments, and returns an array of argument/value pairs.
  */
-module.exports.makeArrayOfArgumentsHash = function (argumentsHash) {
+export function makeArrayOfArgumentsHash(argumentsHash: GenericObject): any[][] {
     const argument_pairs = [];
     for (const key of Object.keys(argumentsHash)) {
         const value = argumentsHash[key];
@@ -121,11 +104,10 @@ module.exports.makeArrayOfArgumentsHash = function (argumentsHash) {
 
 /**
  * Sorts the encoded key value pairs by encoded name, then encoded value
- * @param {array} argument_pairs
  */
-module.exports.sortRequestParams = function (argument_pairs) {
+export function sortRequestParams(argumentPairs: any[]) {
     // Sort by name, then value.
-    argument_pairs.sort((a, b) => {
+    argumentPairs.sort((a, b) => {
         if (a[0] === b[0])  {
             return a[1] < b[1] ? -1 : 1;
         }

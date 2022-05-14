@@ -66,7 +66,7 @@ describe('OAuth._prepareParameters', () => {
     });
 });
 describe('OAuth.signUrl', () => {
-    const OAuthUtils = require('../src/_utils');
+    const OAuthUtils = require('../src/utils');
     OAuthUtils.getTimestamp = function() { return 1272399856 };
     OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     const oauth = new OAuth(null, null, 'consumerkey', 'consumersecret', '1.0', null, 'HMAC-SHA1');
@@ -101,7 +101,7 @@ describe('OAuth.getOAuthAccessToken', () => {
 });
  */
 describe('OAuth.authHeader', () => {
-    const OAuthUtils = require('../src/_utils');
+    const OAuthUtils = require('../src/utils');
     OAuthUtils.getTimestamp = function() { return 1272399856 };
     OAuthUtils.getNonce = function() { return 'ybHPeOEkAUJ3k2wJT9Xb43MjtSgTvKqp'; };
     const oauth = new OAuth('', '', 'consumerkey', 'consumersecret', '1.0', '', 'HMAC-SHA1');
