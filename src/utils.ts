@@ -1,5 +1,7 @@
 import * as http from 'node:http';
 import * as https from 'node:https';
+import { IncomingMessage } from 'http';
+import { URL } from 'node:url';
 
 interface GenericObject {
     [index: string]: any,
@@ -105,7 +107,7 @@ export function makeArrayOfArgumentsHash(argumentsHash: GenericObject): any[][] 
 /**
  * Sorts the encoded key value pairs by encoded name, then encoded value
  */
-export function sortRequestParams(argumentPairs: any[]) {
+export function sortRequestParams(argumentPairs: any[]): void {
     // Sort by name, then value.
     argumentPairs.sort((a, b) => {
         if (a[0] === b[0])  {
@@ -117,10 +119,8 @@ export function sortRequestParams(argumentPairs: any[]) {
 
 /**
  * Normalizes args to request parameter format
- * @param {object} args
- * @returns {string}
  */
-module.exports.normaliseRequestParams = function (args) {
+export function normaliseRequestParams(args: GenericObject): string {
     const argument_pairs = this.makeArrayOfArgumentsHash(args);
     // First encode them #3.4.1.3.2 .1
     for (let i = 0; i < argument_pairs.length; i++) {
@@ -144,22 +144,17 @@ module.exports.normaliseRequestParams = function (args) {
 
 /**
  * A list of NONCE characters
- * @type {string[]}
  */
-module.exports.NONCE_CHARS = [
-    'a','b','c','d','e','f','g','h','i','j','k','l','m','n',
-    'o','p','q','r','s','t','u','v','w','x','y','z','A','B',
-    'C','D','E','F','G','H','I','J','K','L','M','N','O','P',
-    'Q','R','S','T','U','V','W','X','Y','Z','0','1','2','3',
-    '4','5','6','7','8','9'
+export const NONCE_CHARS = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+    'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+    '0','1','2','3','4','5','6','7','8','9'
 ];
 
 /**
  * Gets a string-joined list of NONCE characters based on the nonce size
- * @param {number} nonceSize
- * @returns {string}
  */
-module.exports.getNonce = function (nonceSize) {
+export function getNonce(nonceSize: number): string {
     const result = [];
     const chars = this.NONCE_CHARS;
     let char_pos;
@@ -173,85 +168,44 @@ module.exports.getNonce = function (nonceSize) {
 
 /**
  * Checks if the status code is in the 200s
- * @param {object} response
- * @returns {boolean}
  */
-module.exports.responseIsOkay = function (response) {
+export function responseIsOkay(response: IncomingMessage): boolean {
     return response.statusCode >= 200 && response.statusCode <= 299;
 }
 
 /**
  * Checks if the status code is in the 300s
- * @param {object} response
- * @param {object} clientOptions
- * @returns {boolean}
  */
-module.exports.responseIsRedirect = function (response, clientOptions) {
-    return (response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response?.headers?.location;
+export function responseIsRedirect(response: IncomingMessage, clientOptions: ClientOptions): boolean {
+    return !!((response.statusCode === 301 || response.statusCode === 302) && clientOptions.followRedirects && response?.headers?.location);
 }
 
 /**
  * Gets a timestamp in seconds
  * @returns {number}
  */
-module.exports.getTimestamp = function () {
+export function getTimestamp(): number {
     return Math.floor((new Date()).getTime() / 1000);
 }
 
 /**
  * Returns the correct http/s library for the protocol
- * @param {URL} parsedUrl
- * @returns {module:https|module:http}
  */
-module.exports.chooseHttpLibrary = function (parsedUrl) {
+export function chooseHttpLibrary(parsedUrl: URL) {
     return parsedUrl.protocol === 'https:' ? https : http;
 }
 
 /**
  * Performs the http/s oauth request
- * @param {(http|https)} http_library
- * @param {object} options
- * @param {string|null} post_body
- * @returns {Promise<{data: string, response: object}>}
- * @private
  */
-module.exports.executeRequest = function (http_library, options, post_body=null) {
-    return new Promise((resolve, reject) => {
-        // Some hosts *cough* google appear to close the connection early / send no content-length header
-        // allow this behaviour.
-        const isEarlyClose = this.isAnEarlyCloseHost(options.host);
-        /**
-         * Handles the response from http/s request
-         * @param {object} response
-         * @param {string} data
-         */
-        const responseHandler = (response, data) => {
-            if (!(this.responseIsOkay(response)) && (response.statusCode !== 301) && (response.statusCode !== 302)) {
-                return resolve({error: response.statusCode, data, response});
-            }
-            return resolve({data, response});
-
-        }
-        let data = '';
-        const request = http_library.request(options, (response) => {
-            response.on('data', (chunk) => {
-                data += chunk;
-            });
-            response.on('end', () => {
-                responseHandler(response, data);
-            });
-            response.on('close', () => {
-                if (isEarlyClose) {
-                    responseHandler(response, data);
-                }
-            });
-        });
-        request.on('error', (e) => {
-            return reject(e);
-        });
-        if ((options.method === 'POST' || options.method === 'PUT') && post_body) {
-            request.write(post_body);
-        }
-        request.end();
-    });
+export async function executeRequest(options: Options, postBody?: GenericObject) {
+    if (postBody) {
+        options.postBody = postBody;
+    }
+    const response = await fetch(options.host, options);
+    if (response.ok) {
+        const data = await response.json();
+        return {data, response};
+    }
+    return {error: response.status, data: response.statusText, response};
 }
