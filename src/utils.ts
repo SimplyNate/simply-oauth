@@ -3,7 +3,7 @@ import * as https from 'node:https';
 import { IncomingMessage } from 'http';
 import { URL } from 'node:url';
 
-interface GenericObject {
+export interface GenericObject {
     [index: string]: any,
 }
 

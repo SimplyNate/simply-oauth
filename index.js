@@ -1,4 +1,4 @@
-import Oauth from './src/oauth';
+import Oauth from './src/OAuth';
 import OAuthEcho from './src/oauthecho';
 import OAuth2 from './src/oauth2';
 

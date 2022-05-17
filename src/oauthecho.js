@@ -1,4 +1,4 @@
-import OAuth from './oauth'
+import OAuth from './OAuth'
 
 export default class OAuthEcho extends OAuth {
 

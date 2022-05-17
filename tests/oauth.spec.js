@@ -1,4 +1,4 @@
-const OAuth = require('../src/oauth');
+const OAuth = require('../src/OAuth');
 const crypto = require('crypto');
 
 //Valid RSA keypair used to test RSA-SHA1 signature method

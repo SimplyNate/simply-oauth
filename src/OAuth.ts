@@ -1,50 +1,58 @@
-const crypto = require('crypto');
-const querystring = require('querystring');
-const OAuthUtils = require('./utils');
+import * as crypto from 'node:crypto';
+import * as querystring from 'node:querystring';
+import { GenericObject, encodeData } from './utils';
+import { OutgoingHttpHeaders } from 'http';
 
+type SignatureMethod = 'PLAINTEXT' | 'HMAC-SHA1' | 'RSA-SHA1';
 
-class OAuth {
+interface ClientOptions {
+    requestTokenHttpMethod: string,
+    accessTokenHttpMethod: string,
+    followRedirects: boolean,
+}
 
-    /**
-     * Create an OAuth 1.0/A object to perform requests
-     * @param {string|null} requestUrl
-     * @param {string|null} accessUrl
-     * @param {string|null} consumerKey
-     * @param {string|null} consumerSecret
-     * @param {string|null} version
-     * @param {string|null} authorize_callback
-     * @param {string|null} signatureMethod
-     * @param {number} nonceSize
-     * @param {object|null} customHeaders
-     */
-    constructor(requestUrl, accessUrl, consumerKey, consumerSecret, version, authorize_callback = 'oob', signatureMethod=null, nonceSize = 32, customHeaders=null) {
-        this._isEcho = false;
-        this._requestUrl = requestUrl;
-        this._accessUrl = accessUrl;
-        this._consumerKey = consumerKey;
-        this._consumerSecret = OAuthUtils.encodeData(consumerSecret);
+export default class OAuth {
+    private readonly isEcho: boolean;
+    private readonly requestUrl?: string;
+    private readonly accessUrl?: string;
+    private readonly consumerKey?: string;
+    private readonly consumerSecret?: string;
+    private readonly privateKey?: string;
+    private readonly version?: string;
+    private readonly authorizeCallback?: string;
+    private readonly signatureMethod?: string;
+    private readonly nonceSize: number;
+    private readonly headers?: OutgoingHttpHeaders;
+    private readonly defaultClientOptions: ClientOptions = {
+        requestTokenHttpMethod: 'POST',
+        accessTokenHttpMethod: 'POST',
+        followRedirects: true
+    };
+    private clientOptions: ClientOptions;
+    private readonly oauthParameterSeparator = ',';
+
+    constructor(requestUrl?: string, accessUrl?: string, consumerKey?: string, consumerSecret?: string, version?: string, authorize_callback: string = 'oob', signatureMethod?: SignatureMethod, nonceSize: number = 32, customHeaders?: GenericObject) {
+        this.isEcho = false;
+        this.requestUrl = requestUrl;
+        this.accessUrl = accessUrl;
+        this.consumerKey = consumerKey;
+        this.consumerSecret = encodeData(consumerSecret);
         if (signatureMethod !== 'PLAINTEXT' && signatureMethod !== 'HMAC-SHA1' && signatureMethod !== 'RSA-SHA1') {
             throw new Error(`Un-supported signature method: ${signatureMethod}`);
         }
         if (signatureMethod === 'RSA-SHA1') {
-            this._privateKey = consumerSecret;
+            this.privateKey = consumerSecret;
         }
-        this._version = version;
-        this._authorize_callback = authorize_callback;
-        this._signatureMethod = signatureMethod;
-        this._nonceSize = nonceSize;
-        this._headers = customHeaders || {
+        this.version = version;
+        this.authorizeCallback = authorize_callback;
+        this.signatureMethod = signatureMethod;
+        this.nonceSize = nonceSize;
+        this.headers = customHeaders || {
             Accept : '*/*',
             Connection : 'close',
             'User-Agent' : 'Node authentication'
         };
-        this._defaultClientOptions = {
-            requestTokenHttpMethod: 'POST',
-            accessTokenHttpMethod: 'POST',
-            followRedirects: true
-        };
-        this._clientOptions = this._defaultClientOptions;
-        this._oauthParameterSeperator = ',';
+        this.clientOptions = this.defaultClientOptions;
     }
 
     /**
@@ -67,17 +75,17 @@ class OAuth {
      */
     _buildAuthorizationHeaders(orderedParameters) {
         let authHeader = 'OAuth ';
-        if (this._isEcho) {
+        if (this.isEcho) {
             authHeader += `realm="${this._realm}",`;
         }
         for (let i = 0; i < orderedParameters.length; i++) {
             // While all the parameters should be included within the signature, only the oauth_ arguments
             // should appear within the authorization header.
             if (OAuthUtils.isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
-                authHeader += `${OAuthUtils.encodeData(orderedParameters[i][0])}="${OAuthUtils.encodeData(orderedParameters[i][1])}"${this._oauthParameterSeperator}`;
+                authHeader += `${OAuthUtils.encodeData(orderedParameters[i][0])}="${OAuthUtils.encodeData(orderedParameters[i][1])}"${this.oauthParameterSeparator}`;
             }
         }
-        authHeader = authHeader.substring(0, authHeader.length - this._oauthParameterSeperator.length);
+        authHeader = authHeader.substring(0, authHeader.length - this.oauthParameterSeparator.length);
         return authHeader;
     }
 
@@ -90,13 +98,13 @@ class OAuth {
     _createSignature(signatureBase, tokenSecret) {
         tokenSecret = tokenSecret ? OAuthUtils.encodeData(tokenSecret) : '';
         // consumerSecret is already encoded
-        let key = `${this._consumerSecret}&${tokenSecret}`;
+        let key = `${this.consumerSecret}&${tokenSecret}`;
         let hash;
-        if (this._signatureMethod === 'PLAINTEXT') {
+        if (this.signatureMethod === 'PLAINTEXT') {
             hash = key;
         }
-        else if (this._signatureMethod === 'RSA-SHA1') {
-            key = this._privateKey || '';
+        else if (this.signatureMethod === 'RSA-SHA1') {
+            key = this.privateKey || '';
             hash = crypto.createSign('RSA-SHA1').update(signatureBase).sign(key, 'base64');
         }
         else {
@@ -137,16 +145,16 @@ class OAuth {
     _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
         const oauthParameters = {
             oauth_timestamp: OAuthUtils.getTimestamp(),
-            oauth_nonce: OAuthUtils.getNonce(this._nonceSize),
-            oauth_version: this._version,
-            oauth_signature_method: this._signatureMethod,
-            oauth_consumer_key: this._consumerKey
+            oauth_nonce: OAuthUtils.getNonce(this.nonceSize),
+            oauth_version: this.version,
+            oauth_signature_method: this.signatureMethod,
+            oauth_consumer_key: this.consumerKey
         };
         if (oauth_token) {
             oauthParameters.oauth_token = oauth_token;
         }
         let sig;
-        if (this._isEcho) {
+        if (this.isEcho) {
             sig = this._getSignature('GET', this._verifyCredentials,OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
         }
         else {
@@ -199,15 +207,15 @@ class OAuth {
         const parsedUrl = new URL(url);
         const headers = {};
         const authorization = this._buildAuthorizationHeaders(orderedParameters);
-        if (this._isEcho) {
+        if (this.isEcho) {
             headers['X-Verify-Credentials-Authorization'] = authorization;
         }
         else {
             headers.Authorization = authorization;
         }
         headers.Host = parsedUrl.host
-        for (const key of Object.keys(this._headers)) {
-            headers[key] = this._headers[key];
+        for (const key of Object.keys(this.headers)) {
+            headers[key] = this.headers[key];
         }
         // Filter out any passed extra_params that are really to do with OAuth
         if (extra_params) {
@@ -265,23 +273,23 @@ class OAuth {
      * @param {object} options
      */
     setClientOptions(options) {
-        const merged = { ...this._defaultClientOptions };
+        const merged = { ...this.defaultClientOptions };
         for (const key of Object.keys(options)) {
             merged[key] = options[key];
         }
-        this._clientOptions = merged;
+        this.clientOptions = merged;
         /*
         let key;
         const mergedOptions = {}
         const { hasOwnProperty } = Object.prototype;
-        for (key of Object.keys(this._defaultClientOptions)) {
+        for (key of Object.keys(this.defaultClientOptions)) {
             if (!hasOwnProperty.call(options, key)) {
-                mergedOptions[key] = this._defaultClientOptions[key];
+                mergedOptions[key] = this.defaultClientOptions[key];
             } else {
                 mergedOptions[key] = options[key];
             }
         }
-        this._clientOptions = mergedOptions;
+        this.clientOptions = mergedOptions;
          */
     }
 
@@ -384,10 +392,10 @@ class OAuth {
      */
     async getOAuthRequestToken(extraParams={}) {
         // Callbacks are 1.0A related
-        if (this._authorize_callback) {
-            extraParams.oauth_callback = this._authorize_callback;
+        if (this.authorizeCallback) {
+            extraParams.oauth_callback = this.authorizeCallback;
         }
-        const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this._clientOptions.requestTokenHttpMethod, this._requestUrl, extraParams, null, null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this.clientOptions.requestTokenHttpMethod, this.requestUrl, extraParams, null, null);
         const { error, data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const { oauth_token } = results;
@@ -408,7 +416,7 @@ class OAuth {
         const extraParams = {
             oauth_verifier,
         };
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this._clientOptions.accessTokenHttpMethod, this._accessUrl, extraParams, null, null);
+        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this.clientOptions.accessTokenHttpMethod, this.accessUrl, extraParams, null, null);
         const { error, data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const oauth_access_token = results.oauth_token;
@@ -453,5 +461,3 @@ class OAuth {
     }
 
 }
-
-module.exports = OAuth;
