@@ -2,6 +2,7 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import { IncomingMessage } from 'http';
 import { URL } from 'node:url';
+import { ClientOptions, Options } from './OAuth';
 
 export interface GenericObject {
     [index: string]: any,
@@ -195,10 +196,17 @@ export function chooseHttpLibrary(parsedUrl: URL) {
     return parsedUrl.protocol === 'https:' ? https : http;
 }
 
+export interface OAuthResponse {
+    error?: number,
+    data: string | GenericObject,
+    // eslint-disable-next-line no-undef
+    response: Response
+}
+
 /**
- * Performs the http/s oauth request
+ * Performs the https oauth request
  */
-export async function executeRequest(options: Options, postBody?: GenericObject) {
+export async function executeRequest(options: Options, postBody?: GenericObject): Promise<OAuthResponse> {
     if (postBody) {
         options.postBody = postBody;
     }

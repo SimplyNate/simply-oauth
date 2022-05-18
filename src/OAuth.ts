@@ -1,14 +1,54 @@
 import * as crypto from 'node:crypto';
-import * as querystring from 'node:querystring';
-import { GenericObject, encodeData } from './utils';
-import { OutgoingHttpHeaders } from 'http';
+import { URLSearchParams } from 'node:url';
+import {
+    GenericObject,
+    encodeData,
+    createSignatureBase,
+    isParameterNameAnOAuthParameter,
+    getTimestamp,
+    getNonce, normaliseRequestParams, makeArrayOfArgumentsHash, sortRequestParams
+} from './utils';
 
 type SignatureMethod = 'PLAINTEXT' | 'HMAC-SHA1' | 'RSA-SHA1';
 
-interface ClientOptions {
+export interface ClientOptions {
+    [index: string]: any,
     requestTokenHttpMethod: string,
     accessTokenHttpMethod: string,
     followRedirects: boolean,
+}
+
+interface Headers {
+    [index: string]: string | number,
+    'X-Verify-Credentials-Authorization'?: string,
+    Authorization?: string,
+    Host?: string,
+    'Content-Length'?: number,
+    'Content-Type'?: string,
+}
+
+export interface Options {
+    host: string,
+    port: string,
+    path: string,
+    method: string,
+    headers: Headers,
+    postBody?: any,
+}
+
+interface OAuthParameters {
+    [index: string]: any,
+    oauth_timestamp: number,
+    oauth_nonce: string,
+    oauth_version: string,
+    oauth_signature_method: string,
+    oauth_consumer_key: string,
+    oauth_token?: string,
+}
+
+interface PreparedRequest {
+    options: Options,
+    post_body: string,
 }
 
 export default class OAuth {
@@ -22,7 +62,7 @@ export default class OAuth {
     private readonly authorizeCallback?: string;
     private readonly signatureMethod?: string;
     private readonly nonceSize: number;
-    private readonly headers?: OutgoingHttpHeaders;
+    private readonly headers?: Headers;
     private readonly defaultClientOptions: ClientOptions = {
         requestTokenHttpMethod: 'POST',
         accessTokenHttpMethod: 'POST',
@@ -30,6 +70,8 @@ export default class OAuth {
     };
     private clientOptions: ClientOptions;
     private readonly oauthParameterSeparator = ',';
+    private realm: string = '';
+    private verifyCredentials: string = '';
 
     constructor(requestUrl?: string, accessUrl?: string, consumerKey?: string, consumerSecret?: string, version?: string, authorize_callback: string = 'oob', signatureMethod?: SignatureMethod, nonceSize: number = 32, customHeaders?: GenericObject) {
         this.isEcho = false;
@@ -57,32 +99,25 @@ export default class OAuth {
 
     /**
      * Generates a signature
-     * @param {string} method
-     * @param {string} url
-     * @param {string} parameters
-     * @param {string} tokenSecret
-     * @returns {string}
      */
-    _getSignature(method, url, parameters, tokenSecret) {
-        const signatureBase = OAuthUtils.createSignatureBase(method, url, parameters);
-        return this._createSignature(signatureBase, tokenSecret);
+    private getSignature(method: string, url: string, parameters: string, tokenSecret: string): string {
+        const signatureBase = createSignatureBase(method, url, parameters);
+        return this.createSignature(signatureBase, tokenSecret);
     }
 
     /**
      * Builds the OAuth request authorization header
-     * @param {array} orderedParameters
-     * @returns {string}
      */
-    _buildAuthorizationHeaders(orderedParameters) {
+    private buildAuthorizationHeaders(orderedParameters: string[][]): string {
         let authHeader = 'OAuth ';
         if (this.isEcho) {
-            authHeader += `realm="${this._realm}",`;
+            authHeader += `realm="${this.realm}",`;
         }
         for (let i = 0; i < orderedParameters.length; i++) {
             // While all the parameters should be included within the signature, only the oauth_ arguments
             // should appear within the authorization header.
-            if (OAuthUtils.isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
-                authHeader += `${OAuthUtils.encodeData(orderedParameters[i][0])}="${OAuthUtils.encodeData(orderedParameters[i][1])}"${this.oauthParameterSeparator}`;
+            if (isParameterNameAnOAuthParameter(orderedParameters[i][0])) {
+                authHeader += `${encodeData(orderedParameters[i][0])}="${encodeData(orderedParameters[i][1])}"${this.oauthParameterSeparator}`;
             }
         }
         authHeader = authHeader.substring(0, authHeader.length - this.oauthParameterSeparator.length);
@@ -91,12 +126,9 @@ export default class OAuth {
 
     /**
      * Create a hash signature
-     * @param {string} signatureBase
-     * @param {string} tokenSecret
-     * @returns {string}
      */
-    _createSignature(signatureBase, tokenSecret) {
-        tokenSecret = tokenSecret ? OAuthUtils.encodeData(tokenSecret) : '';
+    createSignature(signatureBase: string, tokenSecret: string): string {
+        tokenSecret = tokenSecret ? encodeData(tokenSecret) : '';
         // consumerSecret is already encoded
         let key = `${this.consumerSecret}&${tokenSecret}`;
         let hash;
@@ -114,16 +146,9 @@ export default class OAuth {
     }
 
     /**
-     * Returns a options object
-     * @param {string} port
-     * @param {string} hostname
-     * @param {string} method
-     * @param {string} path
-     * @param {object} headers
-     * @returns {{path, headers, method, port, host}}
-     * @private
+     * Returns an options object
      */
-    _createOptions(port, hostname, method, path, headers) {
+    private createOptions(port: string, hostname: string, method: string, path: string, headers: Headers): Options {
         return {
             host: hostname,
             port,
@@ -135,78 +160,55 @@ export default class OAuth {
 
     /**
      * Prepares parameters for OAuth request
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {string} method
-     * @param {string} url
-     * @param {object} extra_params
-     * @returns {array}
      */
-    _prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params) {
-        const oauthParameters = {
-            oauth_timestamp: OAuthUtils.getTimestamp(),
-            oauth_nonce: OAuthUtils.getNonce(this.nonceSize),
+    private prepareParameters(oauthToken: string, oauthTokenSecret: string, method: string, url: string, extraParams: GenericObject): string[][] {
+        const oauthParameters: OAuthParameters = {
+            oauth_timestamp: getTimestamp(),
+            oauth_nonce: getNonce(this.nonceSize),
             oauth_version: this.version,
             oauth_signature_method: this.signatureMethod,
-            oauth_consumer_key: this.consumerKey
+            oauth_consumer_key: this.consumerKey,
+            oauth_token: undefined,
         };
-        if (oauth_token) {
-            oauthParameters.oauth_token = oauth_token;
+        if (oauthToken) {
+            oauthParameters.oauth_token = oauthToken;
         }
         let sig;
         if (this.isEcho) {
-            sig = this._getSignature('GET', this._verifyCredentials,OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
+            sig = this.getSignature('GET', this.verifyCredentials, normaliseRequestParams(oauthParameters), oauthTokenSecret);
         }
         else {
-            if (extra_params) {
-                for (const key of Object.keys(extra_params)) {
-                    oauthParameters[key] = extra_params[key];
+            if (extraParams) {
+                for (const key of Object.keys(extraParams)) {
+                    oauthParameters[key] = extraParams[key];
                 }
             }
             const parsedUrl = new URL(url);
             if (parsedUrl.search) {
-                let key2;
-                // Remove the ? character from the search string
-                const search = (parsedUrl.search).replace('?', '');
-                const extraParameters = querystring.parse(search);
-                for (const key of Object.keys(extraParameters)) {
-                    const value = extraParameters[key];
-                    if (typeof value === 'object'){
-                        for (key2 of Object.keys(value)){
-                            oauthParameters[`${key}[${key2}]`] = value[key2];
-                        }
-                    } else {
-                        oauthParameters[key] = value;
-                    }
+                const extraParameters = new URLSearchParams(parsedUrl.searchParams);
+                for (const [key, value] of extraParameters) {
+                    oauthParameters[key] = value;
                 }
             }
-            sig = this._getSignature(method, url, OAuthUtils.normaliseRequestParams(oauthParameters), oauth_token_secret);
+            sig = this.getSignature(method, url, normaliseRequestParams(oauthParameters), oauthTokenSecret);
         }
-        const orderedParameters = OAuthUtils.makeArrayOfArgumentsHash(oauthParameters);
-        OAuthUtils.sortRequestParams(orderedParameters);
+        const orderedParameters = makeArrayOfArgumentsHash(oauthParameters);
+        sortRequestParams(orderedParameters);
         orderedParameters[orderedParameters.length] = ['oauth_signature', sig];
         return orderedParameters;
     }
 
     /**
      * Formats a request and sends it to an endpoint
-     * @param {string|null} oauth_token
-     * @param {string|null} oauth_token_secret
-     * @param {string} method
-     * @param {string} url
-     * @param {object|null} extra_params
-     * @param {(string|buffer|object|null)} post_body
-     * @param {(string|null)} post_content_type
-     * @returns {{object, object, (string|null)}}
      */
-    _prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type) {
-        const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, extra_params);
-        if (!post_content_type) {
-            post_content_type = 'application/x-www-form-urlencoded';
+    private prepareSecureRequest(oauthToken?: string, oauthTokenSecret?: string, method?: string, url?: string, extraParams?: GenericObject, postBody?: string, postContentType?: string): PreparedRequest {
+        const orderedParameters = this.prepareParameters(oauthToken, oauthTokenSecret, method, url, extraParams);
+        if (!postContentType) {
+            postContentType = 'application/x-www-form-urlencoded';
         }
         const parsedUrl = new URL(url);
-        const headers = {};
-        const authorization = this._buildAuthorizationHeaders(orderedParameters);
+        const headers: Headers = {};
+        const authorization = this.buildAuthorizationHeaders(orderedParameters);
         if (this.isEcho) {
             headers['X-Verify-Credentials-Authorization'] = authorization;
         }
@@ -217,43 +219,44 @@ export default class OAuth {
         for (const key of Object.keys(this.headers)) {
             headers[key] = this.headers[key];
         }
-        // Filter out any passed extra_params that are really to do with OAuth
-        if (extra_params) {
-            for (const key of Object.keys(extra_params)) {
-                if (OAuthUtils.isParameterNameAnOAuthParameter(key)) {
-                    delete extra_params[key];
+        // Filter out any passed extraParams that are really to do with OAuth
+        if (extraParams) {
+            for (const key of Object.keys(extraParams)) {
+                if (isParameterNameAnOAuthParameter(key)) {
+                    delete extraParams[key];
                 }
             }
         }
-        if ((method === 'POST' || method === 'PUT')  && (post_body === null && extra_params !== null)) {
+        if ((method === 'POST' || method === 'PUT')  && (postBody === null && extraParams !== null)) {
             // Fix the mismatch between the output of querystring.stringify() and OAuthUtils.encodeData()
-            post_body = querystring.stringify(extra_params)
+            postBody = new URLSearchParams(extraParams).toString()
                 .replace(/!/g, '%21')
                 .replace(/'/g, '%27')
                 .replace(/\(/g, '%28')
                 .replace(/\)/g, '%29')
                 .replace(/\*/g, '%2A');
         }
-        if (post_body) {
-            if (Buffer.isBuffer(post_body)) {
-                headers['Content-Length'] = post_body.length;
+        if (postBody) {
+            if (Buffer.isBuffer(postBody)) {
+                headers['Content-Length'] = postBody.length;
             }
             else {
-                if (typeof post_body === 'object') {
-                    post_body = querystring.stringify(post_body)
+                if (typeof postBody === 'object') {
+                    postBody = new URLSearchParams(postBody).toString()
                         .replace(/!/g, '%21')
                         .replace(/'/g, '%27')
                         .replace(/\(/g, '%28')
                         .replace(/\)/g, '%29')
                         .replace(/\*/g, '%2A');
                 }
-                headers['Content-Length'] = Buffer.byteLength(post_body);
+                headers['Content-Length'] = Buffer.byteLength(postBody);
             }
-        } else {
+        }
+        else {
             headers['Content-Length'] = 0;
         }
-        headers['Content-Type'] = post_content_type;
-        let path;
+        headers['Content-Type'] = postContentType;
+        let path: string;
         if (!parsedUrl.pathname || parsedUrl.pathname === '') {
             parsedUrl.pathname = '/';
         }
@@ -263,34 +266,15 @@ export default class OAuth {
         else {
             path = parsedUrl.pathname;
         }
-        const options = this._createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
-        const http_library = OAuthUtils.chooseHttpLibrary(parsedUrl);
-        return { http_library, options, post_body }
+        const options = this.createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
+        return { options, post_body: postBody }
     }
 
     /**
      * Sets client options from argument
-     * @param {object} options
      */
-    setClientOptions(options) {
-        const merged = { ...this.defaultClientOptions };
-        for (const key of Object.keys(options)) {
-            merged[key] = options[key];
-        }
-        this.clientOptions = merged;
-        /*
-        let key;
-        const mergedOptions = {}
-        const { hasOwnProperty } = Object.prototype;
-        for (key of Object.keys(this.defaultClientOptions)) {
-            if (!hasOwnProperty.call(options, key)) {
-                mergedOptions[key] = this.defaultClientOptions[key];
-            } else {
-                mergedOptions[key] = options[key];
-            }
-        }
-        this.clientOptions = mergedOptions;
-         */
+    setClientOptions(options: ClientOptions): void {
+        this.clientOptions = { ...this.defaultClientOptions, ...options };
     }
 
     /**
@@ -300,8 +284,8 @@ export default class OAuth {
      * @param {string} oauth_token_secret
      * @returns {Promise<{data: string, response: Object}>}
      */
-    delete(url, oauth_token, oauth_token_secret) {
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, null, null);
+    delete(url: string, oauth_token: string, oauth_token_secret: string): Promise<OAuthResponse> {
+        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, null, null);
         return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 
@@ -313,7 +297,7 @@ export default class OAuth {
      * @returns {Promise<{data: string, response: Object}>}
      */
     get(url, oauth_token, oauth_token_secret) {
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, null, null);
+        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, null, null);
         return OAuthUtils.executeRequest(http_library, options, post_body);
     }
 
@@ -364,7 +348,7 @@ export default class OAuth {
             extra_params = post_body;
             post_body = null;
         }
-        const prepared = this._prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
+        const prepared = this.prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
         const { http_library, options } = prepared;
         return OAuthUtils.executeRequest(http_library, options, prepared.post_body);
     }
@@ -395,7 +379,7 @@ export default class OAuth {
         if (this.authorizeCallback) {
             extraParams.oauth_callback = this.authorizeCallback;
         }
-        const { http_library, options, post_body } = this._prepareSecureRequest(null, null, this.clientOptions.requestTokenHttpMethod, this.requestUrl, extraParams, null, null);
+        const { http_library, options, post_body } = this.prepareSecureRequest(null, null, this.clientOptions.requestTokenHttpMethod, this.requestUrl, extraParams, null, null);
         const { error, data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const { oauth_token } = results;
@@ -416,7 +400,7 @@ export default class OAuth {
         const extraParams = {
             oauth_verifier,
         };
-        const { http_library, options, post_body } = this._prepareSecureRequest(oauth_token, oauth_token_secret, this.clientOptions.accessTokenHttpMethod, this.accessUrl, extraParams, null, null);
+        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, this.clientOptions.accessTokenHttpMethod, this.accessUrl, extraParams, null, null);
         const { error, data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
         const results = querystring.parse(data);
         const oauth_access_token = results.oauth_token;
@@ -436,7 +420,7 @@ export default class OAuth {
      */
     signUrl(url, oauth_token=null, oauth_token_secret=null, method=null) {
         method = method ? method : 'GET';
-        const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
+        const orderedParameters = this.prepareParameters(oauth_token, oauth_token_secret, method, url, {});
         const parsedUrl = new URL(url);
         let query = '';
         for (let i = 0; i < orderedParameters.length; i++) {
@@ -456,8 +440,8 @@ export default class OAuth {
      */
     authHeader(url, oauth_token, oauth_token_secret, method=null) {
         method = method ? method : 'GET';
-        const orderedParameters = this._prepareParameters(oauth_token, oauth_token_secret, method, url, {});
-        return this._buildAuthorizationHeaders(orderedParameters);
+        const orderedParameters = this.prepareParameters(oauth_token, oauth_token_secret, method, url, {});
+        return this.buildAuthorizationHeaders(orderedParameters);
     }
 
 }
