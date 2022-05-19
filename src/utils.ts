@@ -2,7 +2,7 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import { IncomingMessage } from 'http';
 import { URL } from 'node:url';
-import { ClientOptions, Options } from './OAuth';
+import { ClientOptions, Options, Headers } from './OAuth';
 
 export interface GenericObject {
     [index: string]: any,
@@ -194,6 +194,19 @@ export function getTimestamp(): number {
  */
 export function chooseHttpLibrary(parsedUrl: URL) {
     return parsedUrl.protocol === 'https:' ? https : http;
+}
+
+/**
+ * Returns an options object
+ */
+export function createOptions(port: string, hostname: string, method: string, path: string, headers: Headers): Options {
+    return {
+        host: hostname,
+        port,
+        path,
+        method,
+        headers
+    };
 }
 
 export interface OAuthResponse {

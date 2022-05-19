@@ -7,6 +7,7 @@ import {
     createSignatureBase,
     isParameterNameAnOAuthParameter,
     getTimestamp,
+    createOptions,
     getNonce, normaliseRequestParams, makeArrayOfArgumentsHash, sortRequestParams, executeRequest
 } from './utils';
 
@@ -19,7 +20,7 @@ export interface ClientOptions {
     followRedirects: boolean,
 }
 
-interface Headers {
+export interface Headers {
     [index: string]: string | number,
     'X-Verify-Credentials-Authorization'?: string,
     Authorization?: string,
@@ -147,19 +148,6 @@ export default class OAuth {
     }
 
     /**
-     * Returns an options object
-     */
-    private createOptions(port: string, hostname: string, method: string, path: string, headers: Headers): Options {
-        return {
-            host: hostname,
-            port,
-            path,
-            method,
-            headers
-        };
-    }
-
-    /**
      * Prepares parameters for OAuth request
      */
     private prepareParameters(oauthToken: string, oauthTokenSecret: string, method: string, url: string, extraParams: GenericObject): string[][] {
@@ -270,7 +258,7 @@ export default class OAuth {
         else {
             path = parsedUrl.pathname;
         }
-        const options = this.createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
+        const options = createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
         return <PreparedRequest>{options, postBody}
     }
 
