@@ -2,11 +2,12 @@ import * as crypto from 'node:crypto';
 import { URLSearchParams } from 'node:url';
 import {
     GenericObject,
+    OAuthResponse,
     encodeData,
     createSignatureBase,
     isParameterNameAnOAuthParameter,
     getTimestamp,
-    getNonce, normaliseRequestParams, makeArrayOfArgumentsHash, sortRequestParams
+    getNonce, normaliseRequestParams, makeArrayOfArgumentsHash, sortRequestParams, executeRequest
 } from './utils';
 
 type SignatureMethod = 'PLAINTEXT' | 'HMAC-SHA1' | 'RSA-SHA1';
@@ -33,7 +34,7 @@ export interface Options {
     path: string,
     method: string,
     headers: Headers,
-    postBody?: any,
+    postBody?: string | Buffer,
 }
 
 interface OAuthParameters {
@@ -48,7 +49,7 @@ interface OAuthParameters {
 
 interface PreparedRequest {
     options: Options,
-    post_body: string,
+    postBody: string | Buffer,
 }
 
 export default class OAuth {
@@ -201,7 +202,7 @@ export default class OAuth {
     /**
      * Formats a request and sends it to an endpoint
      */
-    private prepareSecureRequest(oauthToken?: string, oauthTokenSecret?: string, method?: string, url?: string, extraParams?: GenericObject, postBody?: string, postContentType?: string): PreparedRequest {
+    private prepareSecureRequest(oauthToken?: string, oauthTokenSecret?: string, method?: string, url?: string, extraParams?: GenericObject, postBody?: string | object | Buffer, postContentType?: string): PreparedRequest {
         const orderedParameters = this.prepareParameters(oauthToken, oauthTokenSecret, method, url, extraParams);
         if (!postContentType) {
             postContentType = 'application/x-www-form-urlencoded';
@@ -237,20 +238,23 @@ export default class OAuth {
                 .replace(/\*/g, '%2A');
         }
         if (postBody) {
-            if (Buffer.isBuffer(postBody)) {
+            if (postBody instanceof Object) {
+                postBody = JSON.stringify(postBody);
+                postBody = new URLSearchParams(postBody).toString()
+                    .replace(/!/g, '%21')
+                    .replace(/'/g, '%27')
+                    .replace(/\(/g, '%28')
+                    .replace(/\)/g, '%29')
+                    .replace(/\*/g, '%2A');
+                headers['Content-Length'] = Buffer.byteLength(postBody);
+            }
+            else if (Buffer.isBuffer(postBody)) {
                 headers['Content-Length'] = postBody.length;
             }
             else {
-                if (typeof postBody === 'object') {
-                    postBody = new URLSearchParams(postBody).toString()
-                        .replace(/!/g, '%21')
-                        .replace(/'/g, '%27')
-                        .replace(/\(/g, '%28')
-                        .replace(/\)/g, '%29')
-                        .replace(/\*/g, '%2A');
-                }
                 headers['Content-Length'] = Buffer.byteLength(postBody);
             }
+
         }
         else {
             headers['Content-Length'] = 0;
@@ -267,7 +271,7 @@ export default class OAuth {
             path = parsedUrl.pathname;
         }
         const options = this.createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
-        return { options, post_body: postBody }
+        return <PreparedRequest>{options, postBody}
     }
 
     /**
@@ -279,78 +283,54 @@ export default class OAuth {
 
     /**
      * Sends an OAuth request with DELETE method
-     * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @returns {Promise<{data: string, response: Object}>}
      */
-    delete(url: string, oauth_token: string, oauth_token_secret: string): Promise<OAuthResponse> {
-        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, 'DELETE', url, null, null, null);
-        return OAuthUtils.executeRequest(http_library, options, post_body);
+    delete(url: string, oauthToken: string, oauthTokenSecret: string): Promise<OAuthResponse> {
+        const { options, postBody } = this.prepareSecureRequest(oauthToken, oauthTokenSecret, 'DELETE', url, null, null, null);
+        return executeRequest(options, postBody);
     }
 
     /**
      * Sends an OAuth request with GET method
-     * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @returns {Promise<{data: string, response: Object}>}
      */
-    get(url, oauth_token, oauth_token_secret) {
-        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, 'GET', url, null, null, null);
-        return OAuthUtils.executeRequest(http_library, options, post_body);
+    get(url: string, oauthToken: string, oauthTokenSecret: string): Promise<OAuthResponse> {
+        const { options, postBody } = this.prepareSecureRequest(oauthToken, oauthTokenSecret, 'GET', url, null, null, null);
+        return executeRequest(options, postBody);
     }
 
     /**
      * Sends an OAuth request with PUT method
-     * @param url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {(string|object)} post_body
-     * @param {(string|null)} post_content_type
-     * @returns {Promise<{data: string, response: Object}>}
      */
-    async put(url, oauth_token, oauth_token_secret, post_body, post_content_type=null) {
-        return this._putOrPost('PUT', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+    put(url: string, oauthToken: string, oauthTokenSecret: string, postBody: string | object, postContentType?: string): Promise<OAuthResponse> {
+        return this.putOrPost('PUT', url, oauthToken, oauthTokenSecret, postBody, postContentType);
     }
 
     /**
      * Sends an OAuth request with POST method
-     * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {(string|object)} post_body
-     * @param {(string|null)} post_content_type
-     * @returns {Promise<{data: string, response: Object}>}
      */
-    async post(url, oauth_token, oauth_token_secret, post_body, post_content_type=null) {
-        return this._putOrPost('POST', url, oauth_token, oauth_token_secret, post_body, post_content_type);
+    async post(url: string, oauthToken: string, oauthTokenSecret: string, postBody: string | object, postContentType?: string): Promise<OAuthResponse> {
+        return this.putOrPost('POST', url, oauthToken, oauthTokenSecret, postBody, postContentType);
     }
 
     /**
      * Sends a PUT or POST request depending on the method
      * @param {('PUT'|'POST')} method
      * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {(string|object)} post_body
-     * @param {(string|null)} post_content_type
+     * @param {string} oauthToken
+     * @param {string} oauthTokenSecret
+     * @param {(string|object)} postBody
+     * @param {(string|null)} postContentType
      * @returns {Promise<{data: string, response: Object}>}
      * @private
      */
-    _putOrPost(method, url, oauth_token, oauth_token_secret, post_body, post_content_type) {
-        let extra_params = null;
-        if (typeof post_content_type === 'function') {
-            post_content_type = null;
+    private putOrPost(method: string, url: string, oauthToken: string, oauthTokenSecret: string, postBody: string | object, postContentType?: string): Promise<OAuthResponse> {
+        let extraParams = null;
+        if (postBody instanceof Object) {
+            postContentType = 'application/x-www-form-urlencoded';
+            extraParams = postBody;
+            postBody = null;
         }
-        if (typeof post_body !== 'string' && !Buffer.isBuffer(post_body)) {
-            post_content_type = 'application/x-www-form-urlencoded';
-            extra_params = post_body;
-            post_body = null;
-        }
-        const prepared = this.prepareSecureRequest(oauth_token, oauth_token_secret, method, url, extra_params, post_body, post_content_type);
-        const { http_library, options } = prepared;
-        return OAuthUtils.executeRequest(http_library, options, prepared.post_body);
+        const prepared = this.prepareSecureRequest(oauthToken, oauthTokenSecret, method, url, extraParams, postBody, postContentType);
+        return executeRequest(prepared.options, prepared.postBody);
     }
 
     /**
@@ -371,60 +351,43 @@ export default class OAuth {
      *
      * N.B. This method will HTTP POST verbs by default, if you wish to override this behaviour you will
      * need to provide a requestTokenHttpMethod option when creating the client.
-     * @param {object} extraParams
-     * @returns {Promise<{oauth_token: string | string[], response: Object, oauth_token_secret: string | string[], results: ParsedUrlQuery}>}
      */
-    async getOAuthRequestToken(extraParams={}) {
+    async getOAuthRequestToken(extraParams: GenericObject = {}) {
         // Callbacks are 1.0A related
         if (this.authorizeCallback) {
             extraParams.oauth_callback = this.authorizeCallback;
         }
-        const { http_library, options, post_body } = this.prepareSecureRequest(null, null, this.clientOptions.requestTokenHttpMethod, this.requestUrl, extraParams, null, null);
-        const { error, data, response } = OAuthUtils.executeRequest(http_library, options, post_body);
-        const results = querystring.parse(data);
-        const { oauth_token } = results;
-        const { oauth_token_secret } = results;
-        delete results.oauth_token;
-        delete results.oauth_token_secret;
-        return { error, oauth_token, oauth_token_secret, results, response };
+        const { options, postBody } = this.prepareSecureRequest(null, null, this.clientOptions.requestTokenHttpMethod, this.requestUrl, extraParams, null, null);
+        const { error, data, response } = await executeRequest(options, postBody);
+        // @ts-ignore
+        const { oauth_token, oauth_token_secret } = data;
+        return { error, oauth_token, oauth_token_secret, data, response };
     }
 
     /**
-     * Gets an OAuth access token and returns a object containing the results
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {string} oauth_verifier
-     * @returns {Promise<{response: Object, oauth_access_token_secret: string | string[], oauth_access_token: string | string[], results: ParsedUrlQuery}>}
+     * Gets an OAuth access token and returns an object containing the results
      */
-    async getOAuthAccessToken(oauth_token, oauth_token_secret, oauth_verifier) {
+    async getOAuthAccessToken(oauthToken: string, oauthTokenSecret: string, oauthVerifier: string) {
         const extraParams = {
-            oauth_verifier,
+            oauth_verifier: oauthVerifier,
         };
-        const { http_library, options, post_body } = this.prepareSecureRequest(oauth_token, oauth_token_secret, this.clientOptions.accessTokenHttpMethod, this.accessUrl, extraParams, null, null);
-        const { error, data, response } = await OAuthUtils.executeRequest(http_library, options, post_body);
-        const results = querystring.parse(data);
-        const oauth_access_token = results.oauth_token;
-        delete results.oauth_token;
-        const oauth_access_token_secret = results.oauth_token_secret;
-        delete results.oauth_token_secret;
-        return { error, oauth_access_token, oauth_access_token_secret, results, response };
+        const { options, postBody } = this.prepareSecureRequest(oauthToken, oauthTokenSecret, this.clientOptions.accessTokenHttpMethod, this.accessUrl, extraParams, null, null);
+        const { error, data, response } = await executeRequest(options, postBody);
+        // @ts-ignore
+        const { oauth_token, oauth_token_secret } = data;
+        return { error, oauth_token, oauth_token_secret, data, response };
     }
 
     /**
      * Generates a signed URL string
-     * @param {string} url
-     * @param {string|null} oauth_token
-     * @param {string|null} oauth_token_secret
-     * @param {string|null} method
-     * @returns {string}
      */
-    signUrl(url, oauth_token=null, oauth_token_secret=null, method=null) {
+    signUrl(url: string, oauthToken?: string, oauthTokenSecret?: string, method?: string): string {
         method = method ? method : 'GET';
-        const orderedParameters = this.prepareParameters(oauth_token, oauth_token_secret, method, url, {});
+        const orderedParameters = this.prepareParameters(oauthToken, oauthTokenSecret, method, url, {});
         const parsedUrl = new URL(url);
         let query = '';
         for (let i = 0; i < orderedParameters.length; i++) {
-            query += `${orderedParameters[i][0]}=${OAuthUtils.encodeData(orderedParameters[i][1])}&`;
+            query += `${orderedParameters[i][0]}=${encodeData(orderedParameters[i][1])}&`;
         }
         query = query.substring(0, query.length-1);
         return `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}?${query}`;
@@ -432,15 +395,10 @@ export default class OAuth {
 
     /**
      * Returns the auth header string
-     * @param {string} url
-     * @param {string} oauth_token
-     * @param {string} oauth_token_secret
-     * @param {string|null} method
-     * @returns {string}
      */
-    authHeader(url, oauth_token, oauth_token_secret, method=null) {
+    authHeader(url: string, oauthToken: string, oauthTokenSecret: string, method?: string): string {
         method = method ? method : 'GET';
-        const orderedParameters = this.prepareParameters(oauth_token, oauth_token_secret, method, url, {});
+        const orderedParameters = this.prepareParameters(oauthToken, oauthTokenSecret, method, url, {});
         return this.buildAuthorizationHeaders(orderedParameters);
     }
 

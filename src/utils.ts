@@ -206,7 +206,7 @@ export interface OAuthResponse {
 /**
  * Performs the https oauth request
  */
-export async function executeRequest(options: Options, postBody?: GenericObject): Promise<OAuthResponse> {
+export async function executeRequest(options: Options, postBody?: string | Buffer): Promise<OAuthResponse> {
     if (postBody) {
         options.postBody = postBody;
     }
