@@ -30,12 +30,9 @@ export interface Headers {
 }
 
 export interface Options {
-    host: string,
-    port: string,
-    path: string,
+    url: string
     method: string,
     headers: Headers,
-    postBody?: string | Buffer,
 }
 
 interface OAuthParameters {
@@ -248,17 +245,7 @@ export default class OAuth {
             headers['Content-Length'] = 0;
         }
         headers['Content-Type'] = postContentType;
-        let path: string;
-        if (!parsedUrl.pathname || parsedUrl.pathname === '') {
-            parsedUrl.pathname = '/';
-        }
-        if (parsedUrl.search) {
-            path = `${parsedUrl.pathname}${parsedUrl.search}`;
-        }
-        else {
-            path = parsedUrl.pathname;
-        }
-        const options = createOptions(parsedUrl.port, parsedUrl.hostname, method, path, headers);
+        const options = createOptions(parsedUrl.toString(), method, headers);
         return <PreparedRequest>{options, postBody}
     }
 

@@ -3,7 +3,7 @@ import * as https from 'node:https';
 import { IncomingMessage } from 'http';
 import { URL } from 'node:url';
 import { ClientOptions, Options, Headers } from './OAuth';
-import fetch from 'node-fetch';
+import fetch, { RequestInit, Response } from 'node-fetch';
 
 export interface GenericObject {
     [index: string]: any,
@@ -200,11 +200,9 @@ export function chooseHttpLibrary(parsedUrl: URL) {
 /**
  * Returns an options object
  */
-export function createOptions(port: string, hostname: string, method: string, path: string, headers: Headers): Options {
+export function createOptions(url: string, method: string, headers: Headers): Options {
     return {
-        host: hostname,
-        port,
-        path,
+        url,
         method,
         headers
     };
@@ -213,7 +211,6 @@ export function createOptions(port: string, hostname: string, method: string, pa
 export interface OAuthResponse {
     error?: number,
     data: string | GenericObject,
-    // eslint-disable-next-line no-undef
     response: Response
 }
 
@@ -221,10 +218,12 @@ export interface OAuthResponse {
  * Performs the https oauth request
  */
 export async function executeRequest(options: Options, postBody?: string | Buffer): Promise<OAuthResponse> {
-    if (postBody) {
-        options.postBody = postBody;
-    }
-    const response = await fetch(options.host, options);
+    const fetchInit: RequestInit = {
+        method: options.method,
+        body: postBody,
+        ...options.headers,
+    };
+    const response = await fetch(options.url, fetchInit);
     if (response.ok) {
         const data = await response.json();
         return {data, response};
