@@ -1,26 +1,25 @@
-const https = require('https');
-const OAuthUtils = require('../src/utils');
+import fetch from 'node-fetch';
+import test from 'node:test';
+import { strict as assert } from 'node:assert';
+import * as OAuthUtils from '../src/utils';
 
-describe('isAnEarlyCloseHost', () => {
-    it('should return true if google.com or googleapis.com appears', () => {
-        const google = 'https://google.com';
-        const googleApi = 'https://googleapis.com';
-        expect(OAuthUtils.isAnEarlyCloseHost(google)).toBeTruthy();
-        expect(OAuthUtils.isAnEarlyCloseHost(googleApi)).toBeTruthy();
+test('isAnEarlyCloseHost', async (t) => {
+    await t.test('should return true if google.com or googleapis.com appears', () => {
+        assert.deepEqual(OAuthUtils.isAnEarlyCloseHost('https://google.com'), true);
+        assert.deepEqual(OAuthUtils.isAnEarlyCloseHost('https://googleapis.com'), true);
     });
-    it('should return false if google or googleapis are not in the url', () => {
-        const notGoogle = 'https://foo.bar/abc';
-        expect(OAuthUtils.isAnEarlyCloseHost(notGoogle)).toBeFalsy();
+    await t.test('should return false if google or googleapis are not in the url', () => {
+        assert.deepEqual(OAuthUtils.isAnEarlyCloseHost('https://foo.bar/abc'), false);
     });
 });
 
-describe('combineObjects', () => {
-    it('should copy the key:value pairs from the first arg object to the second arg object', () => {
+test('combineObjects', async (t) => {
+    await t.test('should copy the key:value pairs from the first arg object to the second arg object', () => {
         const fromObject = { a: 'a', b: 'b', c: 'c' };
         const toObject = { d: 'd', e: 'e', f: 'f' };
         OAuthUtils.combineObjects(fromObject, toObject);
         const expected = { a: 'a', b: 'b', c: 'c', d: 'd', e: 'e', f: 'f' };
-        expect(toObject).toEqual(expected);
+        assert.deepEqual(toObject, expected);
     });
 });
 
