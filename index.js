@@ -1,5 +1,5 @@
 import Oauth from './src/OAuth';
-import OAuthEcho from './src/oauthecho';
+import OAuthEcho from './src/OAuthEcho';
 import OAuth2 from './src/oauth2';
 
 export default {

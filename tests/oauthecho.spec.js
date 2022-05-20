@@ -1,4 +1,4 @@
-const OAuthEcho = require('../src/oauthecho');
+const OAuthEcho = require('../src/OAuthEcho');
 
 describe('OAuthEcho.authHeader', () => {
     const realm = 'http://foobar.com/';

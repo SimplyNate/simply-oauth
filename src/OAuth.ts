@@ -11,7 +11,7 @@ import {
     getNonce, normaliseRequestParams, makeArrayOfArgumentsHash, sortRequestParams, executeRequest
 } from './utils';
 
-type SignatureMethod = 'PLAINTEXT' | 'HMAC-SHA1' | 'RSA-SHA1';
+export type SignatureMethod = 'PLAINTEXT' | 'HMAC-SHA1' | 'RSA-SHA1';
 
 export interface ClientOptions {
     [index: string]: any,
@@ -51,7 +51,7 @@ interface PreparedRequest {
 }
 
 export default class OAuth {
-    private readonly isEcho: boolean;
+    protected isEcho: boolean;
     private readonly requestUrl?: string;
     private readonly accessUrl?: string;
     private readonly consumerKey?: string;
@@ -69,8 +69,8 @@ export default class OAuth {
     };
     private clientOptions: ClientOptions;
     private readonly oauthParameterSeparator = ',';
-    private realm: string = '';
-    private verifyCredentials: string = '';
+    protected realm: string = '';
+    protected verifyCredentials: string = '';
 
     constructor(requestUrl?: string, accessUrl?: string, consumerKey?: string, consumerSecret?: string, version?: string, authorize_callback: string = 'oob', signatureMethod?: SignatureMethod, nonceSize: number = 32, customHeaders?: GenericObject) {
         this.isEcho = false;
