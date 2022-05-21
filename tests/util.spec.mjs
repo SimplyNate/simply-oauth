@@ -78,24 +78,24 @@ test('isParameterNameAnOAuthParameter', async (t) => {
     });
 });
 
-describe('makeArrayOfArgumentsHash', () => {
-    it('should make an array of argument hashes and flatten arrays', () => {
+test('makeArrayOfArgumentsHash', async (t) => {
+    await t.test('should make an array of argument hashes and flatten arrays', () => {
         const parameters = {
             z: 'a',
             a: ['1', '2'],
             '1': 'c'
         };
-        const parameterResults= OAuthUtils.makeArrayOfArgumentsHash(parameters);
-        expect(parameterResults.length).toBe(4);
-        expect(parameterResults[0][0]).toBe('1');
-        expect(parameterResults[1][0]).toBe('z');
-        expect(parameterResults[2][0]).toBe('a');
-        expect(parameterResults[3][0]).toBe('a');
+        const parameterResults = OAuthUtils.makeArrayOfArgumentsHash(parameters);
+        assert.equal(parameterResults.length, 4);
+        assert.equal(parameterResults[0][0], '1');
+        assert.equal(parameterResults[1][0], 'z');
+        assert.equal(parameterResults[2][0], 'a');
+        assert.equal(parameterResults[3][0], 'a');
     });
 });
 
-describe('sortRequestParams', () => {
-    it('should order them by name', () => {
+test('sortRequestParams', async (t) => {
+    await t.test('should order them by name', () => {
         const parameters = {
             z: 'a',
             a: 'b',
@@ -103,11 +103,11 @@ describe('sortRequestParams', () => {
         };
         const parameterResults = OAuthUtils.makeArrayOfArgumentsHash(parameters);
         OAuthUtils.sortRequestParams(parameterResults);
-        expect(parameterResults[0][0]).toBe('1');
-        expect(parameterResults[1][0]).toBe('a');
-        expect(parameterResults[2][0]).toBe('z');
+        assert.equal(parameterResults[0][0], '1');
+        assert.equal(parameterResults[1][0], 'a');
+        assert.equal(parameterResults[2][0], 'z');
     });
-    it('should order by value if two params are the same', () => {
+    await t.test('should order by value if two params are the same', () => {
         const parameters = {
             z: 'a',
             a: ['z', 'b', 'b', 'a', 'y'],
@@ -115,23 +115,23 @@ describe('sortRequestParams', () => {
         };
         const parameterResults = OAuthUtils.makeArrayOfArgumentsHash(parameters);
         OAuthUtils.sortRequestParams(parameterResults);
-        expect(parameterResults[0][0]).toBe('1');
-        expect(parameterResults[1][0]).toBe('a');
-        expect(parameterResults[1][1]).toBe('a');
-        expect(parameterResults[2][0]).toBe('a');
-        expect(parameterResults[2][1]).toBe('b');
-        expect(parameterResults[3][0]).toBe('a');
-        expect(parameterResults[3][1]).toBe('b');
-        expect(parameterResults[4][0]).toBe('a');
-        expect(parameterResults[4][1]).toBe('y');
-        expect(parameterResults[5][0]).toBe('a');
-        expect(parameterResults[5][1]).toBe('z');
-        expect(parameterResults[6][0]).toBe('z');
+        assert.equal(parameterResults[0][0], '1');
+        assert.equal(parameterResults[1][0], 'a');
+        assert.equal(parameterResults[1][1], 'a');
+        assert.equal(parameterResults[2][0], 'a');
+        assert.equal(parameterResults[2][1], 'b');
+        assert.equal(parameterResults[3][0], 'a');
+        assert.equal(parameterResults[3][1], 'b');
+        assert.equal(parameterResults[4][0], 'a');
+        assert.equal(parameterResults[4][1], 'y');
+        assert.equal(parameterResults[5][0], 'a');
+        assert.equal(parameterResults[5][1], 'z');
+        assert.equal(parameterResults[6][0], 'z');
     });
 });
 
-describe('normalizeRequestParams', () => {
-    it('should be encoded and ordered per http://tools.ietf.org/html/rfc5849#section-3.1 (3.4.1.3.2)', () => {
+test('normalizeRequestParams', async (t) => {
+    await t.test('should be encoded and ordered per https://tools.ietf.org/html/rfc5849#section-3.1 (3.4.1.3.2)', () => {
         const parameters = {
             b5 : '=%3D',
             a3: ['a', '2 q'],
@@ -145,45 +145,45 @@ describe('normalizeRequestParams', () => {
             c2 :  ''
         };
         const normalisedParameterString = OAuthUtils.normaliseRequestParams(parameters);
-        expect(normalisedParameterString).toBe('a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7');
+        assert.equal(normalisedParameterString, 'a2=r%20b&a3=2%20q&a3=a&b5=%3D%253D&c%40=&c2=&oauth_consumer_key=9djdj82h48djs9d2&oauth_nonce=7d8f3e4a&oauth_signature_method=HMAC-SHA1&oauth_timestamp=137131201&oauth_token=kkk9d7dh3k39sjv7');
     });
 });
 
-describe('NONCE_CHARS', () => {
-    it('should be a list of expected letters a-zA-Z0-9', () => {
+test('NONCE_CHARS', async (t) => {
+    await t.test('should be a list of expected letters a-zA-Z0-9', () => {
         const nonce = OAuthUtils.NONCE_CHARS.join('');
-        expect(nonce).toEqual('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
-        expect(OAuthUtils.NONCE_CHARS.length).toBe(62);
+        assert.equal(nonce, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+        assert.equal(OAuthUtils.NONCE_CHARS.length, 62);
     });
 });
 
-describe('getNonce', () => {
-    it('should return a concatenated string of nonce characters based on size', () => {
+test('getNonce', async (t) => {
+    await t.test('should return a concatenated string of nonce characters based on size', () => {
         const nonce = OAuthUtils.getNonce(16);
-        expect(nonce.match(/[a-zA-Z0-9]/)).toBeDefined();
+        assert.ok(nonce.match(/[a-zA-Z\d]/));
     });
 });
 
-describe('responseIsOkay', () => {
-    it('should respond true for codes between 200 and 299 inclusively', () => {
-        expect(OAuthUtils.responseIsOkay({ statusCode: 200 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 201 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 202 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 203 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 204 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 205 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 206 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 207 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 208 })).toBeTruthy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 226 })).toBeTruthy();
+test('responseIsOkay', async (t) => {
+    await t.test('should respond true for codes between 200 and 299 inclusively', () => {
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 200 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 201 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 202 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 203 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 204 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 205 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 206 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 207 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 208 }), true);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 226 }), true);
     });
-    it('should respond false for codes not between 200 and 299', () => {
-        expect(OAuthUtils.responseIsOkay({ statusCode: 100 })).toBeFalsy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 301 })).toBeFalsy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 404 })).toBeFalsy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 400 })).toBeFalsy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 500 })).toBeFalsy();
-        expect(OAuthUtils.responseIsOkay({ statusCode: 502 })).toBeFalsy();
+    await t.test('should respond false for codes not between 200 and 299', () => {
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 100 }), false);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 301 }), false);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 404 }), false);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 400 }), false);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 500 }), false);
+        assert.equal(OAuthUtils.responseIsOkay({ statusCode: 502 }), false);
     });
 });
 
