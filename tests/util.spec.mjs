@@ -23,58 +23,58 @@ test('combineObjects', async (t) => {
     });
 });
 
-describe('encodeData', () => {
-    it('should encode special characters', () => {
-        const url = 'http://www.foo.bar/?something=another&another=\'(hello)*\'';
+test('encodeData', async (t) => {
+    await t.test('should encode special characters', () => {
+        const url = 'https://www.foo.bar/?something=another&another=\'(hello)*\'';
         const results = OAuthUtils.encodeData(url);
-        expect(results).toBe('http%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27');
+        assert.equal(results, 'https%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27');
     });
 });
 
-describe('decodeData', () => {
-    it('should decode special characters into string representation', () => {
-        const encoded = 'http%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27';
+test('decodeData', async (t) => {
+    await t.test('should decode special characters into string representation', () => {
+        const encoded = 'https%3A%2F%2Fwww.foo.bar%2F%3Fsomething%3Danother%26another%3D%27%28hello%29%2A%27';
         const results = OAuthUtils.decodeData(encoded);
-        expect(results).toBe('http://www.foo.bar/?something=another&another=\'(hello)*\'');
+        assert.equal(results, 'https://www.foo.bar/?something=another&another=\'(hello)*\'');
     });
 });
 
-describe('normalizeUrl', () => {
-    it('should normalize a url', () => {
+test('normalizeUrl', async (t) => {
+    await t.test('should normalize a url', () => {
         const normal1 = OAuthUtils.normalizeUrl('https://somehost.com:443/foo/bar');
-        expect(normal1).toBe('https://somehost.com/foo/bar');
+        assert.equal(normal1, 'https://somehost.com/foo/bar');
         const normal2 = OAuthUtils.normalizeUrl('https://somehost.com:446/foo/bar');
-        expect(normal2).toBe('https://somehost.com:446/foo/bar');
-        const normal3 = OAuthUtils.normalizeUrl('http://somehost.com:81/foo/bar');
-        expect(normal3).toBe('http://somehost.com:81/foo/bar');
-        const normal4 = OAuthUtils.normalizeUrl('http://somehost.com');
-        expect(normal4).toBe('http://somehost.com/');
+        assert.equal(normal2, 'https://somehost.com:446/foo/bar');
+        const normal3 = OAuthUtils.normalizeUrl('https://somehost.com:81/foo/bar');
+        assert.equal(normal3, 'https://somehost.com:81/foo/bar');
+        const normal4 = OAuthUtils.normalizeUrl('https://somehost.com');
+        assert.equal(normal4, 'https://somehost.com/');
     });
 });
 
-describe('createSignatureBase', () => {
-    it('should create a valid signature base as described in http://oauth.net/core/1.0/#sig_base_example', () => {
+test('createSignatureBase', async (t) => {
+    await t.test('should create a valid signature base as described in https://oauth.net/core/1.0/#sig_base_example', () => {
         const result = OAuthUtils.createSignatureBase(
             'GET',
-            'http://photos.example.net/photos',
+            'https://photos.example.net/photos',
             'file=vacation.jpg&oauth_consumer_key=dpf43f3p2l4k3l03&oauth_nonce=kllo9940pd9333jh&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1191242096&oauth_token=nnch734d00sl2jdk&oauth_version=1.0&size=original'
         );
-        expect(result).toBe('GET&http%3A%2F%2Fphotos.example.net%2Fphotos&file%3Dvacation.jpg%26oauth_consumer_key%3Ddpf43f3p2l4k3l03%26oauth_nonce%3Dkllo9940pd9333jh%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1191242096%26oauth_token%3Dnnch734d00sl2jdk%26oauth_version%3D1.0%26size%3Doriginal');
+        assert.equal(result, 'GET&https%3A%2F%2Fphotos.example.net%2Fphotos&file%3Dvacation.jpg%26oauth_consumer_key%3Ddpf43f3p2l4k3l03%26oauth_nonce%3Dkllo9940pd9333jh%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1191242096%26oauth_token%3Dnnch734d00sl2jdk%26oauth_version%3D1.0%26size%3Doriginal');
     });
 });
 
-describe('isParameterNameAnOAuthParameter', () => {
-    it('should correctly identify all oauth parameters and reject others', () => {
+test('isParameterNameAnOAuthParameter', async (t) => {
+    await t.test('should correctly identify all oauth parameters and reject others', () => {
         const param1 = OAuthUtils.isParameterNameAnOAuthParameter('oauth_param');
         const param2 = OAuthUtils.isParameterNameAnOAuthParameter('other_param');
         const param3 = OAuthUtils.isParameterNameAnOAuthParameter('anotherParamOAUTH_');
         const param4 = OAuthUtils.isParameterNameAnOAuthParameter('param_oauth_');
         const param5 = OAuthUtils.isParameterNameAnOAuthParameter('_oauth_param');
-        expect(param1).toBeTruthy();
-        expect(param2).toBeFalsy();
-        expect(param3).toBeFalsy();
-        expect(param4).toBeFalsy();
-        expect(param5).toBeFalsy();
+        assert.equal(param1, true);
+        assert.equal(param2, false);
+        assert.equal(param3, false);
+        assert.equal(param4, false);
+        assert.equal(param5, false);
     });
 });
 
