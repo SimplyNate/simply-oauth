@@ -187,37 +187,37 @@ test('responseIsOkay', async (t) => {
     });
 });
 
-describe('responseIsRedirect', () => {
-    it('should respond true if response code is 301, 302, if the client follows redirect, and if a location is present in the response', () => {
+test('responseIsRedirect', async (t) => {
+    await t.test('should respond true if response code is 301, 302, if the client follows redirect, and if a location is present in the response', () => {
         const response = { statusCode: 301, headers: { location: 'some.location' }};
         const clientOptions = { followRedirects: true };
-        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeTruthy();
+        assert.equal(OAuthUtils.responseIsRedirect(response, clientOptions), true);
         response.statusCode = 302;
-        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeTruthy();
+        assert.equal(OAuthUtils.responseIsRedirect(response, clientOptions), true);
     });
-    it('should respond false if response code is not 301 or 302', () => {
+    await t.test('should respond false if response code is not 301 or 302', () => {
         const response = { statusCode: 202, headers: { location: 'some.location' }};
         const clientOptions = { followRedirects: true };
-        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
+        assert.equal(OAuthUtils.responseIsRedirect(response, clientOptions), false);
     });
-    it('should respond false if client does not follow redirect', () => {
+    await t.test('should respond false if client does not follow redirect', () => {
         const response = { statusCode: 302, headers: { location: 'some.location' }};
         const clientOptions = { followRedirects: false };
-        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
+        assert.equal(OAuthUtils.responseIsRedirect(response, clientOptions), false);
     });
-    it('should respond false if a location is not provided in the headers', () => {
+    await t.test('should respond false if a location is not provided in the headers', () => {
         const response = { statusCode: 302, headers: {}};
         const responseNoHeader = { statusCode: 302 };
         const clientOptions = { followRedirects: true };
-        expect(OAuthUtils.responseIsRedirect(response, clientOptions)).toBeFalsy();
-        expect(OAuthUtils.responseIsRedirect(responseNoHeader, clientOptions)).toBeFalsy();
+        assert.equal(OAuthUtils.responseIsRedirect(response, clientOptions), false);
+        assert.equal(OAuthUtils.responseIsRedirect(responseNoHeader, clientOptions), false);
     });
 });
 
-describe('getTimestamp', () => {
-    it('should return a Unix timestamp in seconds', () => {
-        expect(OAuthUtils.getTimestamp()).toBeDefined();
-        expect(OAuthUtils.getTimestamp()).toBeGreaterThan(0);
+test('getTimestamp', async (t) => {
+    await t.test('should return a Unix timestamp in seconds', () => {
+        assert.equal(OAuthUtils.getTimestamp() instanceof Number, true);
+        assert.equal(OAuthUtils.getTimestamp() > 0, true);
     });
 });
 
